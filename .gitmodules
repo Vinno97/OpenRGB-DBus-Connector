@@ -1,0 +1,6 @@
+# [submodule "openrgb-python"]
+# 	path = openrgb
+# 	url = git@github.com:jath03/openrgb-python.git
+[submodule "OpenRGB"]
+	path = OpenRGB
+	url = git@github.com:bahorn/OpenRGB-PyClient.git
