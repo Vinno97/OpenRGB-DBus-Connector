@@ -44,6 +44,8 @@ hooks:
 
 ```
 
+Example configurations can be found in `./examples`.
+
 **Note:** The D-Bus handling is fairly sophisticated, but the lighting controls are still severely lacking. The color of every LED of every device (exposed by OpenRGB) can be changed. There is currently no way to revert those changes when the event has finished. This would require the program to read and save the state of the LEDs before overwriting them. Though this can be easily added due to the way the actions are implemented, I have not yet gotten around to figuring out how to get this information from OpenRGB.
 
 
@@ -62,14 +64,14 @@ This project is still in its very early stages and should not be viewed as a fin
 * [ ] Add support for controlling animations. (I am banking on OpenRGB Python Client to support this in the (near?) future)
 * [ ] Clean file structure.
 * [ ] Write proper documentation.
-* [ ] Write example configurations.
+* [ ] Write more example configurations.
 * [ ] Allow the OpenRGB server port to be changed.
 
 
 ## Special thanks to
 
 * [Adam Honse](https://gitlab.com/CalcProgrammer1), for developing OpenRGB
-* [B. Horn](https://github.com/bahorn), for developing the [OpenRGB Python Client](https://github.com/bahorn/OpenRGB-P.yClien), without which this project would not be possible.
+* [B. Horn](https://github.com/bahorn), for developing the [OpenRGB Python Client](https://github.com/bahorn/OpenRGB-PyClient), without which this project would not be possible.
 * [Matt Harper](https://gitlab.com/matt.harper), for implementing RGB Fusion 2 support in OpenRGB, allowing me to use it for my own PC.
 * All the other contributors to the [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB).
 * Of course the [D-Bus](https://www.freedesktop.org/wiki/Software/dbus/) project, for being the backbone of my desktop and enabling this project to listen to its messages.
