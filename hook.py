@@ -57,7 +57,7 @@ class NoopAction(BaseAction):
             print("(%s): Reset!" % id(self))
 
 
-class Action(BaseAction, metaclass=abc.ABCMeta):
+class Action(BaseAction):
     def __init__(self, wrapped_action, client=None):
         client = client if client else wrapped_action.client
         super().__init__(client)
@@ -79,7 +79,6 @@ class Action(BaseAction, metaclass=abc.ABCMeta):
         self._reset(config)
         self._inner_action._reset(config)
 
-    @abc.abstractmethod()
     def _act(self, config):
         pass
 
@@ -237,13 +236,7 @@ class Hook:
         self.name = name
 
     def attach(self, bus: Bus):
-        self._bus = bus
-
-        self._pre_attach(bus)
-
-        subscription = self._attach(bus)
-
-        self._post_attach(bus, subscription)
+        self._attach(bus)
 
     def _attach(self, bus: Bus) -> Subscription:
         return self.start_trigger.attach(
@@ -266,10 +259,3 @@ class Hook:
             end_subscription = self.end_trigger.attach(bus, context, _on_end)
 
         return trigger_func
-
-    # Lifecycle hooks
-    def _pre_attach(self, bus: Bus):
-        pass
-
-    def _post_attach(self, bus: Bus, subscription: Subscription):
-        pass
