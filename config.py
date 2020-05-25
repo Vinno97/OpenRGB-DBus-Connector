@@ -29,7 +29,7 @@ class Factory(Generic[T], metaclass=abc.ABCMeta):
         return kwargs
 
     @classmethod
-    def create(cls, definition):
+    def create(cls, definition) -> T:
         return cls.construct_instance(**cls._construct_kwargs(definition))
 
     @classmethod
@@ -40,13 +40,15 @@ class Factory(Generic[T], metaclass=abc.ABCMeta):
         return list_wrapper
 
     @classmethod
-    def reduce(cls, func, arg_name, initial_value):
+    def reduce(cls, func, arg_name, initial_func):
         def reduce_wrapper(definition_list):
-            last_item = initial_value
+            last_item = initial_func()
             for i, definition in enumerate(definition_list):
                 definition = {**definition, "_last_item": last_item}
                 last_item = func(definition)
             return last_item
+
+        return reduce_wrapper
 
     @classmethod
     def dict(cls, fields):
@@ -65,38 +67,37 @@ class ActionFactory(Factory[Action]):
     @classmethod
     def field_factories(cls):
         return {
-            "device_id": ("device", str),
-            "leds": ("leds", str),
-            "color": ("color", str),
+            "device_id": ("device", int),
+            "leds": ("leds", Factory.list(int)),
+            "color": ("color", Factory.list(int)),
             "arguments": ("arguments", Factory.list(str)),
             # HACK: This is sort of a hack. Or is it? Maybe.
-            "_last_instance": ("wrapped_action", lambda x: x),
+            "_last_item": ("wrapped_action", lambda x: x),
         }
 
-    @classmethod
-    def _construct_kwargs(cls, definition):
-        kwargs = super()._construct_kwargs(definition)
-        kwargs["wrapped_action"] = cls.last_instance
-        return kwargs
+    # @classmethod
+    # def _construct_kwargs(cls, definition):
+    #     kwargs = super()._construct_kwargs(definition)
+    #     kwargs["wrapped_action"] = cls.last_instance
+    #     return kwargs
 
-    @classmethod
-    def cascade_list(cls, func, key):
-        cls.last_instance = BaseAction(None)
+    # @classmethod
+    # def cascade_list(cls, func, key):
+    #     cls.last_instance = BaseAction(None)
 
-        def cascading_wrapper(definition_list):
-            var = [
-                func({**definition, "_last_instance": cls.last_instance})
-                for definition in definition_list
-            ]
-            return var
+    #     def cascading_wrapper(definition_list):
+    #         var = [
+    #             func({**definition, "_last_instance": cls.last_instance})
+    #             for definition in definition_list
+    #         ]
+    #         return var
 
-        return cascading_wrapper
+    #     return cascading_wrapper
 
     @classmethod
     def construct_instance(cls, *args, **kwargs):
         # TODO: Don't hardcode the LedAction here
-        cls.last_instance = LedAction(*args, **kwargs)
-        return cls.last_instance
+        return LedAction(*args, **kwargs)
 
 
 class TriggerFactory(Factory[Trigger]):
@@ -145,15 +146,15 @@ class HookFactory(Factory[Hook]):
         return {
             "bus": ("bus_name", str),
             # "action": ("action", ActionFactory.create),
-            "actions": ("action", lambda x: None),
+            # "actions": ("action", lambda x: None),
             # "actions": (
             #     "action",
             #     ActionFactory.cascade_list(ActionFactory.create, key="wrapped_action"),
             # ),
-            # "actions": (
-            #     "action",
-            #     Factory.reduce(ActionFactory.create, "wrapped_action", NoopAction),
-            # ),
+            "actions": (
+                "action",
+                Factory.reduce(ActionFactory.create, "wrapped_action", NoopAction),
+            ),
             "trigger": ("start_trigger", TriggerFactory.create),
             "until": ("end_trigger", TriggerFactory.create),
         }

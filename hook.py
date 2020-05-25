@@ -5,10 +5,20 @@ from pydbus.bus import Bus
 from pydbus.subscription import Subscription
 from utils import substitute_all
 
+import numpy as np
+
 
 class BaseAction:
     def __init__(self, client):
-        self.client = client
+        self._client = client
+
+    @property
+    def client(self):
+        return self._client
+
+    @client.setter
+    def client(self, client):
+        self._client = client
 
     def act(self, config):
         for device, cmap in config.items():
@@ -16,11 +26,12 @@ class BaseAction:
 
     def reset(self, config):
         for device, cmap in config.items():
-            client.update_leds(cmap, device_id=device)
+            self.client.update_leds(cmap, device_id=device)
 
 
 class NoopAction(BaseAction):
     def __init__(self, debug=True):
+        super().__init__(None)
         self.debug = debug
 
     def act(self, config):
@@ -39,11 +50,19 @@ class Action(BaseAction, metaclass=abc.ABCMeta):
         super().__init__(client)
         self._inner_action = wrapped_action
 
-    def act(self, config):
+    @property
+    def client(self):
+        return self._inner_action.client
+
+    @client.setter
+    def client(self, client):
+        self._inner_action.client = client
+
+    def act(self, config={}):
         self._act(config)
         self._inner_action.act(config)
 
-    def reset(self, config):
+    def reset(self, config={}):
         self._reset(config)
         self._inner_action._reset(config)
 
@@ -70,7 +89,15 @@ class LedAction(Action):
         self.leds = leds
         self.color = color
 
+    # TODO Move this functionaility to a place where the current state can be saved in the config
+    def set_up_config(self, config):
+        led_count = len(self.client.controller_data(device_id=self.device).leds)
+        color_dims = 3
+        return np.zeros((led_count, color_dims), dtype=np.ubyte)
+
     def _act(self, config):
+        if not self.device in config:
+            config[self.device] = self.set_up_config(config)
         config[self.device][self.leds] = [self.color] * len(self.leds)
 
 

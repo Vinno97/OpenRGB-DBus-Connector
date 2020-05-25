@@ -76,7 +76,9 @@ cond = TriggerCondition(
 
 
 for name, definition in hook_definitons.items():
-    hooks[name] = HookFactory.create(definition)
+    hook = HookFactory.create(definition)
+    hook.action.client = client
+    hooks[name] = hook
 
 for hook in hooks:
     hooks[hook].attach(bus)
