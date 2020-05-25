@@ -68,15 +68,9 @@ bus = SessionBus()
 
 hooks = {}
 
-cond = TriggerCondition(
-    "${sig_arg0}", "org.gnome.SessionManager", "GetAppId", ["Playing Audio"]
-)
-
-# cond.evaluate(bus, {"sig_arg0": "/org/gnome/SessionManager/Inhibitor5"})
-
-
 for name, definition in hook_definitons.items():
-    hook = HookFactory.create(definition)
+    hook = HookFactory.create(definition, name=name)
+    # TODO: Implement a better way to pass the client to actions
     hook.action.client = client
     hooks[name] = hook
 

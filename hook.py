@@ -1,11 +1,24 @@
 import abc
-from typing import List, Union
+from typing import List, Union, Callable
 from string import Template
 from pydbus.bus import Bus
 from pydbus.subscription import Subscription
 from utils import substitute_all
 
 import numpy as np
+
+
+# TODO: Check for which cases this dict extension suffices and where it does not
+class Context(dict):
+    def __init__(self, parent: dict = None, iterable={}):
+        super().__init__(iterable)
+        self._parent = parent
+
+    def __len__(self):
+        return super().__len__() + self._parent.__len__()
+
+    def __missing__(self, key):
+        return self._parent[key] if self._parent else super().__missing__(key)
 
 
 class BaseAction:
@@ -39,7 +52,7 @@ class NoopAction(BaseAction):
             print("(%s): Act!" % id(self))
         super().act(config)
 
-    def reset(self):
+    def reset(self, config):
         if self.debug:
             print("(%s): Reset!" % id(self))
 
@@ -66,7 +79,7 @@ class Action(BaseAction, metaclass=abc.ABCMeta):
         self._reset(config)
         self._inner_action._reset(config)
 
-    # @abc.abstractmethod()
+    @abc.abstractmethod()
     def _act(self, config):
         pass
 
@@ -126,7 +139,7 @@ class TriggerCondition:
         # self.response = [Template(x) for x in response]
         self.arguments = [Template(x) for x in arguments]
 
-    def evaluate(self, bus: Bus, context={}) -> bool:
+    def evaluate(self, bus: Bus, context: Context) -> bool:
         service, path, method, expected_response, arguments = substitute_all(
             [self.service, self.path, self.method, self.response, self.arguments,],
             parameters=context,
@@ -145,85 +158,118 @@ class Trigger:
         path: str = None,
         interface: str = None,
         name: str = None,
-        arguments: list = [],
+        arguments: List[str] = [],
         conditions: List[TriggerCondition] = [],
     ):
-        self.sender: str = sender
-        self.path: str = path
-        self.interface: str = interface
-        self.name: str = name
-        self.arguments: list = arguments
+        self.sub_params = {}
+
+        if sender:
+            self.sub_params["sender"] = Template(sender)
+        if path:
+            self.sub_params["object"] = Template(path)
+        if interface:
+            self.sub_params["iface"] = Template(interface)
+        if name:
+            self.sub_params["signal"] = Template(name)
+        self.arguments = [Template(x) for x in arguments]
         self.conditions = conditions
         self.subscription = None
 
     def evaluate(self, bus: Bus, context={}):
         return all(condition.evaluate(bus, context) for condition in self.conditions)
 
-    def signal_handler(self, bus, callback):
-        def handler(sender, path, interface, name, parameters):
-            print(sender, path, interface, name, parameters)
-            context = {
-                "sig_sender": sender,
-                "sig_path": path,
-                "sig_interface": interface,
-                "sig_name": name,
-                **{f"sig_arg{i}": v for i, v in enumerate(parameters)},
-            }
-            if self.evaluate(bus, context):
-                callback(sender, path, interface, name, parameters)
+    # TODO: Clean this method up
+    def signal_handler(
+        self, context: Context, bus: Bus, callback: Callable[[Context], None]
+    ):
+        def handler(sender, path, interface, name, arguments):
+            print("Subscription Triggered: ", sender, path, interface, name, arguments)
+            expected_arguments = substitute_all(self.arguments, context)
+            for expected, actual in zip(expected_arguments, arguments):
+                if expected != actual:
+                    print(
+                        f"Ignoring due to argument mismatch (expected {expected}, got {actual})"
+                    )
+                    return
+
+            new_context = Context(context)
+            new_context.update(
+                {
+                    "sig_sender": sender,
+                    "sig_path": path,
+                    "sig_interface": interface,
+                    "sig_name": name,
+                    **{f"sig_arg{i}": v for i, v in enumerate(arguments)},
+                }
+            )
+            if self.evaluate(bus, new_context):
+                callback(new_context)
 
         return handler
 
-    def attach(self, bus: Bus, callback) -> Subscription:
+    def attach(
+        self, bus: Bus, context: dict, callback: Callable[[Context], None]
+    ) -> Subscription:
+        sub_params = substitute_all(self.sub_params, context)
+        print("Subscribing with params:", sub_params)
         return bus.subscribe(
-            sender=self.sender,
-            iface=self.interface,
-            signal=self.name,
-            # arg0 = args['arguments'],
-            signal_fired=self.signal_handler(bus, callback),
+            **sub_params, signal_fired=self.signal_handler(context, bus, callback),
         )
 
 
 class Hook:
-    bus_name: str
-    action: Action
-    start_trigger: Trigger
-    end_trigger: Trigger
-
-    _bus = None
-    _subscription = None
-
     def __init__(
         self,
+        start_trigger,
+        end_trigger,
         bus_name: str = "session",
-        start_trigger: Trigger = Trigger(),
-        end_trigger: Trigger = Trigger(),
+        name: str = None,
         action=NoopAction(),
     ):
         self.bus_name = bus_name
         self.start_trigger = start_trigger
         self.end_trigger = end_trigger
         self.action = action
+        self.subscriptions = []
+        self.context = {}
+        if not name:
+            name = id(self)
+        self.name = name
 
     def attach(self, bus: Bus):
         self._bus = bus
 
         self._pre_attach(bus)
 
-        self._attach(bus)
+        subscription = self._attach(bus)
 
-        self._post_attach(bus, self._subscription)
+        self._post_attach(bus, subscription)
 
-    def _attach(self, bus: Bus):
-        self.start_trigger.attach(bus, lambda *args, **kwargs: self.action.act())
-        self.end_trigger.attach(bus, lambda *args, **kwargs: self.action.reset())
+    def _attach(self, bus: Bus) -> Subscription:
+        return self.start_trigger.attach(
+            bus, self.context, self.get_trigger_handler(bus)
+        )
+
+    # TODO: Clean this method up
+    def get_trigger_handler(self, bus):
+        def trigger_func(context):
+            print(f"Hook '{self.name}' activated")
+
+            self.action.act()
+            end_subscription: Subscription = None
+
+            def _on_end(*args, **kwargs):
+                end_subscription.disconnect()
+                self.action.reset()
+                print(f"Hook '{self.name}' halted")
+
+            end_subscription = self.end_trigger.attach(bus, context, _on_end)
+
+        return trigger_func
 
     # Lifecycle hooks
     def _pre_attach(self, bus: Bus):
         pass
 
     def _post_attach(self, bus: Bus, subscription: Subscription):
-        pass
-
-    def _on_signal(self):
         pass
