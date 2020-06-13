@@ -6,13 +6,12 @@ from collections import defaultdict
 
 import numpy as np
 import yaml
-from dbus.mainloop.glib import DBusGMainLoop
+# from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import GLib
 from pydbus import SessionBus
 
-from config import HookFactory
-from hook import Action, BaseAction, Hook, LedAction, Trigger, TriggerCondition
 from OpenRGB.openrgb import OpenRGB
+from openrgbdbus.config_loading import HookFactory
 
 # if __name__ == "__main__":
 client = OpenRGB("localhost", 1337)
@@ -26,7 +25,6 @@ for _, device in devices.items():
 with open("hooks.yaml", "r") as f:
     hook_definitons = yaml.safe_load(f)["hooks"]
 
-DBusGMainLoop(set_as_default=True)
 bus = SessionBus()
 
 hooks = {}

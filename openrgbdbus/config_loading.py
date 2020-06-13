@@ -1,6 +1,9 @@
 import abc
-from typing import TypeVar, Generic
-from hook import *
+from typing import Generic, TypeVar
+
+from .actions import Action, BaseAction, LedAction, NoopAction
+from .hook import Hook
+from .trigger import Trigger, TriggerCondition
 
 T = TypeVar("T")
 
@@ -120,7 +123,8 @@ class HookFactory(Factory[Hook]):
             "action": ("action", ActionFactory.create),
             "actions": (
                 "action",
-                Factory.reduce(ActionFactory.create, "wrapped_action", NoopAction),
+                Factory.reduce(ActionFactory.create,
+                               "wrapped_action", NoopAction),
             ),
             "trigger": ("start_trigger", TriggerFactory.create),
             "until": ("end_trigger", TriggerFactory.create),
