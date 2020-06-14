@@ -7,7 +7,7 @@ from pydbus.subscription import Subscription
 
 from .actions import Action
 from .trigger import Trigger
-from .utils import substitute_all
+from .utils import Context, substitute_all
 
 
 def bus_from_name(name: str):
@@ -41,10 +41,14 @@ class Hook:
             name = id(self)
         self.name = name
 
+    def set_context(self, context: Context):
+        self.context = Context(context)
+
     def attach(self):
-        self.subscriptions.append(self.start_trigger.attach(
+        subscription = self.start_trigger.attach(
             self.bus, self.context, self.get_trigger_handler(self.bus)
-        ))
+        )
+        self.subscriptions.append(subscription)
 
     # TODO: This responsibility should probably be delegated to the trigger
     def disconnect(self):
@@ -56,15 +60,16 @@ class Hook:
         def trigger_func(context):
             print(f"Hook '{self.name}' activated")
 
-            self.action.act()
+            self.action.act(context)
             end_subscription: Subscription = None
 
             def _on_end(*args, **kwargs):
                 end_subscription.disconnect()
                 self.subscriptions.remove(end_subscription)
-                self.action.reset()
+                self.action.reset(context)
                 print(f"Hook '{self.name}' halted")
 
             end_subscription = self.end_trigger.attach(bus, context, _on_end)
+            self.subscriptions.append(end_subscription)
 
         return trigger_func

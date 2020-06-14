@@ -28,8 +28,7 @@ class TriggerCondition:
 
     def evaluate(self, bus: Bus, context: Context) -> bool:
         service, path, method, expected_response, arguments = substitute_all(
-            [self.service, self.path, self.method,
-                self.response, self.arguments, ],
+            [self.service, self.path, self.method, self.response, self.arguments,],
             parameters=context,
         )
 
@@ -71,14 +70,17 @@ class Trigger:
         self, context: Context, bus: Bus, callback: Callable[[Context], None]
     ):
         def handler(sender, path, interface, name, arguments):
-            print("Subscription Triggered: ", sender,
-                  path, interface, name, arguments)
+            if context.debug:
+                print(
+                    "Subscription Triggered: ", sender, path, interface, name, arguments
+                )
             expected_arguments = substitute_all(self.arguments, context)
             for expected, actual in zip(expected_arguments, arguments):
                 if expected != actual:
-                    print(
-                        f"Ignoring due to argument mismatch (expected {expected}, got {actual})"
-                    )
+                    if context.debug:
+                        print(
+                            f"Ignoring due to argument mismatch (expected {expected}, got {actual})"
+                        )
                     return
 
             new_context = Context(context)
@@ -100,7 +102,8 @@ class Trigger:
         self, bus: Bus, context: Context, callback: Callable[[Context], None]
     ) -> Subscription:
         sub_params = substitute_all(self.sub_params, context)
-        print("Subscribing with params:", sub_params)
+        if context.debug:
+            print("Subscribing with params:", sub_params)
         return bus.subscribe(
             **sub_params, signal_fired=self.signal_handler(context, bus, callback),
         )

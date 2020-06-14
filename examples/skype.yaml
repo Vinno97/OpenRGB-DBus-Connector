@@ -1,22 +1,14 @@
-version: 0.1.0
-
-server:
-  host: localhost
-  port: 1337
-
-default:
-  - profile:
-      name: default.orp
+version: 0.2.0
 
 hooks:
   skype:
     bus: session
     actions:
       - device_id: 1
-        leds: [0, 1, 2]
+        zones: [0, 1, 2]
         color: [0, 175, 240]
       - device_id: 0
-        leds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        zones: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         color: [0, 175, 240]
     trigger:
       signal:
@@ -27,12 +19,10 @@ hooks:
       conditions:
         - service_name: org.gnome.SessionManager
           path: ${sig_arg0}
-          # - interface: org.gnome.SessionManager
           method: GetAppId
           response: "/usr/share/skypeforlinux/skypeforlinux"
         - service_name: org.gnome.SessionManager
           path: ${sig_arg0}
-          # - interface: org.gnome.SessionManager
           method: GetReason
           response: "Playing audio"
     until:

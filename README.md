@@ -22,18 +22,11 @@ server: # Optional way to specify the location of the OpenRGB SDK
   host: <host where the OpenRGB SDK is running. Defaults to 'localhost'>
   port: <port that the OpenRGB SDK is attached to. Defaults to 1337>
 
-# Optional list of actions to run when the program is started. 
-# Temporary actions can only be undone if the previous state is known 
-# beforehand. As the OpenRGB SDK does not expose any methods to query the state
-# of devices, this program needs to keep track of states itself and can only 
-# reset to states set by this program itself. If no default profile is loaded,
-# an 'off' state (rgb(0,0,0)) is assumed.
-default: 
-  - profile:
-      name: default.orp
-  # And/or
+debug: <optional boolean flag to enable debug logging, defaults to false> 
+
+default: # Optional list of actions to run when the program is started.  
   - device_id: <numerical id of device controller>
-    leds: <list of affected leds>
+    zones: <list of affected leds>
     color: <list of 0-255 for R, G and B values>
 
 hooks:
@@ -73,24 +66,27 @@ This project is still in its very early stages and should not be viewed as a fin
 ## TODO
 
 * [x] Add conditional value checks for arguments (evaluate response of D-Bus methods after signal is received).
-* [ ] Reset lights to their original state after event has passed.
+* [x] Reset lights to their original state after event has passed.
 * [ ] Make `until` hooks optional (for one-shot hooks)
 * [ ] Add timed hooks (Stop effect after delay instead of waiting for a stopping trigger).
-* [ ] Add zone control.
+* [x] Add zone control.
 * [ ] Make optional D-Bus properties for signals and conditions actually optional.
 * [ ] Extend conditional checks to support methods that return non-string responses (ints, arrays, objects, etc.). 
 * [ ] Allow for easier configuration (no hard-coded config, multiple files, etc.).
-* [ ] Add support for controlling animations. (I am banking on OpenRGB Python Client to support this in the (near?) future)
+* [ ] Add support for controlling animations/modes.
 * [x] Clean file structure.
 * [ ] Write proper documentation.
 * [ ] Write more example configurations.
 * [x] Allow the OpenRGB server port to be changed.
+* [ ] Allow loading of profiles (how should these be reset?)
+* [ ] Implement more advanced templating ([Jinja?](http://zetcode.com/python/jinja/)).
 
 
 ## Special thanks to
 
 * [Adam Honse](https://gitlab.com/CalcProgrammer1), for developing OpenRGB
-* [B. Horn](https://github.com/bahorn), for developing the [OpenRGB Python Client](https://github.com/bahorn/OpenRGB-PyClient), without which this project would not be possible.
+* [jath03](https://github.com/jath03), for developing [openrgb-python](https://github.com/jath03/openrgb-python), which is used to interface with the OpenRGB SDK.
+* [B. Horn](https://github.com/bahorn), for developing the [OpenRGB Python Client](https://github.com/bahorn/OpenRGB-PyClient). The first versions of this program ran on this library. Without it, I would probably have dropped the idea for this project in its early stages.
 * [Matt Harper](https://gitlab.com/matt.harper), for implementing RGB Fusion 2 support in OpenRGB, allowing me to use it for my own PC.
 * All the other contributors to the [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB).
 * Of course the [D-Bus](https://www.freedesktop.org/wiki/Software/dbus/) project, for being the backbone of my desktop and enabling this project to listen to its messages.

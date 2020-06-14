@@ -8,7 +8,7 @@ from openrgb import OpenRGBClient
 import openrgbdbus.connector
 import openrgbdbus.defaults as defaults
 
-from .actions import Action, BaseAction, LedAction, NoopAction
+from .actions import Action, BaseAction, ZoneAction
 from .hook import Hook
 from .trigger import Trigger, TriggerCondition
 
@@ -96,15 +96,16 @@ class ActionFactory(Factory[Action]):
     def field_factories(cls):
         return {
             "device_id": ("device", int),
-            "leds": ("leds", Factory.list(int)),
+            # "leds": ("leds", Factory.list(int)),
+            "zones": ("zones", Factory.list(int)),
             "color": ("color", Factory.list(int)),
             "arguments": ("arguments", Factory.list(str)),
         }
 
     @classmethod
     def construct_instance(cls, *args, **kwargs):
-        # TODO: Don't hardcode the LedAction here
-        return LedAction(*args, **kwargs)
+        # TODO: Don't hardcode the ZoneAction here
+        return ZoneAction(*args, **kwargs)
 
 
 class TriggerFactory(Factory[Trigger]):
@@ -155,8 +156,7 @@ class HookFactory(Factory[Hook]):
             "action": ("action", ActionFactory.create),
             "actions": (
                 "action",
-                Factory.reduce(ActionFactory.create,
-                               "wrapped_action", NoopAction),
+                Factory.reduce(ActionFactory.create, "wrapped_action", BaseAction),
             ),
             "trigger": ("start_trigger", TriggerFactory.create),
             "until": ("end_trigger", TriggerFactory.create),
@@ -193,15 +193,18 @@ class ConnectorFactory(Factory[Hook]):
         return {
             "hooks": ("hooks", Factory.dict(HookFactory.create)),
             "version": ("", Factory.ignore),
+            "debug": ("debug", bool),
             "server": ("client", ClientFactory.create),
-            "default": ("default_action", Factory.reduce(ActionFactory.create,
-                                                         "wrapped_action", NoopAction))
+            "default": (
+                "default_action",
+                Factory.reduce(ActionFactory.create, "wrapped_action", BaseAction),
+            ),
         }
 
     @classmethod
     def defaults(cls):
         return defaults.connector
 
-    @ classmethod
+    @classmethod
     def construct_instance(cls, *args, **kwargs):
         return openrgbdbus.connector.Connector(*args, **kwargs)

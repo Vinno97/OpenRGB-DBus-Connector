@@ -4,6 +4,4 @@ client = {
     "display_name": "D-Bus Connector",
 }
 
-connector = {
-    "server": client
-}
+connector = {"server": client}

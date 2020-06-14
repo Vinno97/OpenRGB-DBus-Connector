@@ -1,3 +1,0 @@
-[submodule "OpenRGB"]
-	path = OpenRGB
-	url = git@github.com:bahorn/OpenRGB-PyClient.git

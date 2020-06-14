@@ -8,11 +8,12 @@ from pydbus import SessionBus
 from openrgbdbus.actions import Action
 
 from .initialization import ConnectorFactory
+from .utils import Context
 
-_config_ver = '0.1.1'
+_config_ver = "0.1.1"
 
 
-class Connector():
+class Connector:
     __create_key = object()
 
     @classmethod
@@ -25,22 +26,28 @@ class Connector():
             # Else assume the argument is the already parsed configuration
             definition = configuration
 
-        assert(version.parse(_config_ver) >=
-               version.parse(definition['version']))
+        assert version.parse(_config_ver) >= version.parse(definition["version"])
 
         return ConnectorFactory.create(definition, create_key=cls.__create_key)
 
-    def __init__(self, create_key, hooks, client, default_action: Action = None):
-        assert(create_key == Connector.__create_key), \
-            "Connector objects must be created using Connector.fromConfig"
+    def __init__(
+        self, create_key, hooks, client, debug=False, default_action: Action = None
+    ):
+        assert (
+            create_key == Connector.__create_key
+        ), "Connector objects must be created using Connector.fromConfig"
         self.hooks = hooks
         self.client = client
         self.loop = GLib.MainLoop()
         self.default_action = default_action
+        self.context = Context({"rgb_client": client, "debug": debug,})
+        for hook in self.hooks.values():
+            hook.set_context(self.context)
 
     def start(self):
         if self.default_action:
-            self.default_action.act()
+            self.default_action.act(self.context)
+            print("Initialized with default actions")
 
         for name, hook in self.hooks.items():
             hook.attach()
@@ -56,3 +63,7 @@ class Connector():
             hook.disconnect()
 
         print("%d hooks removed" % len(self.hooks))
+
+        if self.default_action:
+            self.default_action.reset(self.context)
+            print("Reset default actions")

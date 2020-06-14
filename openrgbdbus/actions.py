@@ -1,96 +1,86 @@
 from typing import List
 
 import numpy as np
+from openrgb.utils import DeviceType, RGBColor
+
+from .utils import Context
 
 
 class BaseAction:
-    def __init__(self, client):
-        self._client = client
+    def act(self, context: Context = Context()):
+        pass
 
-    @property
-    def client(self):
-        return self._client
-
-    @client.setter
-    def client(self, client):
-        self._client = client
-
-    def act(self, config):
-        for device, cmap in config.items():
-            self.client.update_leds(cmap, device_id=device)
-
-    def reset(self, config):
-        for device, cmap in config.items():
-            self.client.update_leds(cmap, device_id=device)
+    def reset(self, context: Context = Context()):
+        pass
 
 
 class NoopAction(BaseAction):
-    def __init__(self, debug=True):
-        super().__init__(None)
-        self.debug = debug
+    def __init__(self):
+        super().__init__()
 
-    def act(self, config):
-        if self.debug:
+    def act(self, context: Context = Context()):
+        if context.debug:
             print("(%s): Act!" % id(self))
-        super().act(config)
 
-    def reset(self, config):
-        if self.debug:
+    def reset(self, context: Context = Context()):
+        if context.debug:
             print("(%s): Reset!" % id(self))
 
 
 class Action(BaseAction):
-    def __init__(self, wrapped_action, client=None):
-        client = client if client else wrapped_action.client
-        super().__init__(client)
+    def __init__(self, wrapped_action):
+        super().__init__()
         self._inner_action = wrapped_action
 
-    @property
-    def client(self):
-        return self._inner_action.client
+    def act(self, context: Context):
+        self._act(context)
+        self._inner_action.act(context)
 
-    @client.setter
-    def client(self, client):
-        self._inner_action.client = client
+    def reset(self, context: Context):
+        self._reset(context)
+        self._inner_action.reset(context)
 
-    def act(self, config={}):
-        self._act(config)
-        self._inner_action.act(config)
-
-    def reset(self, config={}):
-        self._reset(config)
-        self._inner_action._reset(config)
-
-    def _act(self, config):
+    def _act(self, context: Context):
         pass
 
-    def _reset(self, config):
+    def _reset(self, context: Context):
         pass
 
 
-class LedAction(Action):
+class ZoneAction(Action):
     def __init__(
         self,
-        device: int,
-        leds: List[int],
-        color: List[int],
-        wrapped_action,
-        client=None,
+        wrapped_action: Action,
+        zones: List[int],
+        color: List[int] = None,
+        colors: List[List[int]] = None,
+        device=None,
+        device_type=None,
     ):
-        super().__init__(wrapped_action, client)
-        self._inner_action = wrapped_action
-        self.device = device
-        self.leds = leds
+        super().__init__(wrapped_action)
+        self.zones = zones
         self.color = color
+        self.colors = color
+        if self.color is None and self.colors is None:
+            raise Exception("Either 'color' or 'colors' should be set")
+        # TODO: Add option to set modes
+        # self.mode = mode
+        self.device = device
+        self.previous_colors = None
 
-    # TODO Move this functionaility to a place where the current state can be saved in the config
-    def set_up_config(self, config):
-        led_count = len(self.client.controller_data(
-            device_id=self.device).leds)
-        color_dims = 3
-        return np.zeros((led_count, color_dims), dtype=np.ubyte)
+    def _act(self, context: Context = Context()):
+        client = context.rgb_client
+        device = client.devices[self.device]
+        zones = [zone for zone in device.zones if zone.id in self.zones]
+        self.previous_colors = [zone.colors for zone in zones]
+        for zone in zones:
+            if self.color:
+                zone.set_color(RGBColor(*self.color))
+            else:
+                zone.set_colors([RGBColor(*color) for color in self.colors])
 
-    def _act(self, config):
-        if not self.device in config:
-            config[self.device] = self.set_up_config(config)
-        config[self.device][self.leds] = [self.color] * len(self.leds)
+    def _reset(self, context: Context = Context()):
+        client = context.rgb_client
+        device = client.devices[self.device]
+        for zone in self.zones:
+            device.zones[zone].set_colors(self.previous_colors[zone])
