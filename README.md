@@ -1,5 +1,7 @@
 # D-Bus Connector for OpenRGB
 
+**Currently refractoring and migrating from [B. Horn's OpenRGB Client](https://github.com/bahorn/OpenRGB-PyClient) to [Jath03's openrgb-python](https://github.com/jath03) library. Last working commit is 37565898b9721d13ab537a44c016efdb02f7005e**.
+
 ## What is this project?
 
 This project offers an easy™ way to have you PC's lighting effects respond to events on your PC. Most, if not all, modern Linux-based desktops use D-Bus to share information between applications. This tool listens for designated signals on this bus and can change lighting effects when an event is detected.
@@ -14,15 +16,32 @@ The tool works by listening to the D-Bus system until it receives a signal that 
 The entire configuration of the tool is defined in the `hooks.yaml`, which is constructed as follows:
 
 ```yaml
-version: <version number for config format. Not currently used>
+version: <version number for config format>
+
+server: # Optional way to specify the location of the OpenRGB SDK
+  host: <host where the OpenRGB SDK is running. Defaults to 'localhost'>
+  port: <port that the OpenRGB SDK is attached to. Defaults to 1337>
+
+# Optional list of actions to run when the program is started. 
+# Temporary actions can only be undone if the previous state is known 
+# beforehand. As the OpenRGB SDK does not expose any methods to query the state
+# of devices, this program needs to keep track of states itself and can only 
+# reset to states set by this program itself. If no default profile is loaded,
+# an 'off' state (rgb(0,0,0)) is assumed.
+default: 
+  - profile:
+      name: default.orp
+  # And/or
+  - device_id: <numerical id of device controller>
+    leds: <list of affected leds>
+    color: <list of 0-255 for R, G and B values>
 
 hooks:
     [hook_name]:
-        bus: <d-bus name | default: 'session'>
-        action: # What to do when the hook is triggered
-            device_id: <numerical id of device controller>
-            leds: <list of affected leds>
-            color: <list of 0-255 for R, G and B values>
+        bus: <d-bus name | default: 'session'> 
+        action: <action> 
+            # What to do when the hook is triggered (single action). See the usage
+            # see "default" for how an action should be defined.
         actions: # Can be used instead of 'action' do define multiple actions.
             - <action>
             - <action>

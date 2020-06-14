@@ -5,6 +5,8 @@ from gi.repository import GLib
 from packaging import version
 from pydbus import SessionBus
 
+from openrgbdbus.actions import Action
+
 from .initialization import ConnectorFactory
 
 _config_ver = '0.1.1'
@@ -22,19 +24,24 @@ class Connector():
         else:
             # Else assume the argument is the already parsed configuration
             definition = configuration
+
         assert(version.parse(_config_ver) >=
                version.parse(definition['version']))
 
-        return ConnectorFactory.create(definition, create_key=cls.__create_key, client=None)
+        return ConnectorFactory.create(definition, create_key=cls.__create_key)
 
-    def __init__(self, create_key, hooks, client):
+    def __init__(self, create_key, hooks, client, default_action: Action = None):
         assert(create_key == Connector.__create_key), \
             "Connector objects must be created using Connector.fromConfig"
         self.hooks = hooks
         self.client = client
         self.loop = GLib.MainLoop()
+        self.default_action = default_action
 
     def start(self):
+        if self.default_action:
+            self.default_action.act()
+
         for name, hook in self.hooks.items():
             hook.attach()
 

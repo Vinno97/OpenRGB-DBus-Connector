@@ -4,6 +4,10 @@ server:
   host: localhost
   port: 1337
 
+default:
+  - profile:
+      name: default.orp
+
 hooks:
   skype:
     bus: session

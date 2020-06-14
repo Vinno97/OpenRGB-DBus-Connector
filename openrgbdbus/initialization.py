@@ -1,9 +1,12 @@
 import abc
+from types import SimpleNamespace
 from typing import Generic, TypeVar
 
 import yaml
+from openrgb import OpenRGBClient
 
 import openrgbdbus.connector
+import openrgbdbus.defaults as defaults
 
 from .actions import Action, BaseAction, LedAction, NoopAction
 from .hook import Hook
@@ -20,12 +23,17 @@ class Factory(Generic[T], metaclass=abc.ABCMeta):
         return {}
 
     @classmethod
+    def defaults(cls):
+        return {}
+
+    @classmethod
     @abc.abstractmethod
     def construct_instance(cls, *args, **kwargs) -> T:
         pass
 
     @classmethod
     def create(cls, definition, **extra_kwargs) -> T:
+        definition = {**cls.defaults(), **definition}
         kwargs = {}
         factories = cls.field_factories()
         for key, value in definition.items():
@@ -159,15 +167,41 @@ class HookFactory(Factory[Hook]):
         return Hook(*args, **kwargs)
 
 
+class ClientFactory(Factory[OpenRGBClient]):
+    @classmethod
+    def field_factories(cls):
+        return {
+            "host": ("address", str),
+            "port": ("port", int),
+            "display_name": ("name", str),
+        }
+
+    @classmethod
+    def defaults(cls):
+        return {
+            "display_name": "D-Bus Connector",
+        }
+
+    @classmethod
+    def construct_instance(cls, *args, **kwargs):
+        return OpenRGBClient(*args, **kwargs)
+
+
 class ConnectorFactory(Factory[Hook]):
     @classmethod
     def field_factories(cls):
         return {
             "hooks": ("hooks", Factory.dict(HookFactory.create)),
             "version": ("", Factory.ignore),
-            "server": ("", Factory.ignore)
+            "server": ("client", ClientFactory.create),
+            "default": ("default_action", Factory.reduce(ActionFactory.create,
+                                                         "wrapped_action", NoopAction))
         }
 
     @classmethod
+    def defaults(cls):
+        return defaults.connector
+
+    @ classmethod
     def construct_instance(cls, *args, **kwargs):
         return openrgbdbus.connector.Connector(*args, **kwargs)
