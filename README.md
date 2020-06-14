@@ -62,10 +62,10 @@ This project is still in its very early stages and should not be viewed as a fin
 * [ ] Extend conditional checks to support methods that return non-string responses (ints, arrays, objects, etc.). 
 * [ ] Allow for easier configuration (no hard-coded config, multiple files, etc.).
 * [ ] Add support for controlling animations. (I am banking on OpenRGB Python Client to support this in the (near?) future)
-* [ ] Clean file structure.
+* [x] Clean file structure.
 * [ ] Write proper documentation.
 * [ ] Write more example configurations.
-* [ ] Allow the OpenRGB server port to be changed.
+* [x] Allow the OpenRGB server port to be changed.
 
 
 ## Special thanks to

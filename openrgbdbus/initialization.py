@@ -1,6 +1,10 @@
 import abc
 from typing import Generic, TypeVar
 
+import yaml
+
+import openrgbdbus.connector
+
 from .actions import Action, BaseAction, LedAction, NoopAction
 from .hook import Hook
 from .trigger import Trigger, TriggerCondition
@@ -9,6 +13,8 @@ T = TypeVar("T")
 
 
 class Factory(Generic[T], metaclass=abc.ABCMeta):
+    __ignore_key = object()
+
     @classmethod
     def field_factories(cls):
         return {}
@@ -23,12 +29,17 @@ class Factory(Generic[T], metaclass=abc.ABCMeta):
         kwargs = {}
         factories = cls.field_factories()
         for key, value in definition.items():
+            if key not in factories:
+                raise Exception('Unknown key "{}"'.format(key))
+
             arg_name, factory_func = factories[key]
             # TODO: Don't make this dependant on the name 'kwargs'
             if arg_name == "kwargs":
                 kwargs = {**kwargs, **factory_func(value)}
             else:
                 kwargs[arg_name] = factory_func(value)
+
+            kwargs = {k: v for k, v in kwargs.items() if v != cls.__ignore_key}
         return cls.construct_instance(**kwargs, **extra_kwargs)
 
     @classmethod
@@ -49,14 +60,27 @@ class Factory(Generic[T], metaclass=abc.ABCMeta):
         return reduce_wrapper
 
     @classmethod
-    def dict(cls, fields):
-        def dict_wrapper(definition_dict):
+    def kwargs(cls, fields):
+        def kwarg_wrapper(definition_dict):
             return {
                 arg_name: fields[arg_name][1](definition)
                 for arg_name, definition in definition_dict.items()
             }
 
+        return kwarg_wrapper
+
+    @classmethod
+    def dict(cls, func):
+        def dict_wrapper(definition_dict):
+            return {
+                name: func(definition) for name, definition in definition_dict.items()
+            }
+
         return dict_wrapper
+
+    @classmethod
+    def ignore(cls, *args, **kwargs):
+        return cls.__ignore_key
 
 
 class ActionFactory(Factory[Action]):
@@ -81,7 +105,7 @@ class TriggerFactory(Factory[Trigger]):
         return {
             "signal": [
                 "kwargs",
-                Factory.dict(
+                Factory.kwargs(
                     {
                         "sender": ("sender", str),
                         "path": ("path", str),
@@ -133,3 +157,17 @@ class HookFactory(Factory[Hook]):
     @classmethod
     def construct_instance(cls, *args, **kwargs):
         return Hook(*args, **kwargs)
+
+
+class ConnectorFactory(Factory[Hook]):
+    @classmethod
+    def field_factories(cls):
+        return {
+            "hooks": ("hooks", Factory.dict(HookFactory.create)),
+            "version": ("", Factory.ignore),
+            "server": ("", Factory.ignore)
+        }
+
+    @classmethod
+    def construct_instance(cls, *args, **kwargs):
+        return openrgbdbus.connector.Connector(*args, **kwargs)

@@ -1,4 +1,8 @@
-version: 0.1
+version: 0.1.0
+
+server:
+  host: localhost
+  port: 1337
 
 hooks:
   skype:
