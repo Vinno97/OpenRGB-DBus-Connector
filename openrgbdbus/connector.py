@@ -10,7 +10,7 @@ from openrgbdbus.actions import Action
 from .initialization import ConnectorFactory
 from .utils import Context
 
-_config_ver = "0.1.1"
+_config_ver = "0.2.0"
 
 
 class Connector:
