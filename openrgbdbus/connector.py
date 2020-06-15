@@ -10,7 +10,7 @@ from openrgbdbus.actions import Action
 from .initialization import ConnectorFactory
 from .utils import Context
 
-_config_ver = "0.2.0"
+_config_ver = "0.2.1"
 
 
 class Connector:
@@ -26,7 +26,8 @@ class Connector:
             # Else assume the argument is the already parsed configuration
             definition = configuration
 
-        assert version.parse(_config_ver) >= version.parse(definition["version"])
+        assert version.parse(_config_ver) >= version.parse(
+            definition["version"])
 
         return ConnectorFactory.create(definition, create_key=cls.__create_key)
 
@@ -40,7 +41,7 @@ class Connector:
         self.client = client
         self.loop = GLib.MainLoop()
         self.default_action = default_action
-        self.context = Context({"rgb_client": client, "debug": debug,})
+        self.context = Context({"rgb_client": client, "debug": debug})
         for hook in self.hooks.values():
             hook.set_context(self.context)
 

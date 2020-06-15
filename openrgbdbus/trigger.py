@@ -28,7 +28,8 @@ class TriggerCondition:
 
     def evaluate(self, bus: Bus, context: Context) -> bool:
         service, path, method, expected_response, arguments = substitute_all(
-            [self.service, self.path, self.method, self.response, self.arguments,],
+            [self.service, self.path, self.method,
+                self.response, self.arguments, ],
             parameters=context,
         )
 
@@ -45,7 +46,8 @@ class Trigger:
         path: str = None,
         interface: str = None,
         name: str = None,
-        arguments: List[str] = [],
+        eavesdrop: bool = False,
+        arguments: List = [],
         conditions: List[TriggerCondition] = [],
     ):
         self.sub_params = {}
@@ -55,10 +57,12 @@ class Trigger:
         if path:
             self.sub_params["object"] = Template(path)
         if interface:
-            self.sub_params["iface"] = Template(interface)
+            self.sub_params["interface"] = Template(interface)
         if name:
-            self.sub_params["signal"] = Template(name)
-        self.arguments = [Template(x) for x in arguments]
+            self.sub_params["member"] = Template(name)
+        self.sub_params["eavesdrop"] = str(eavesdrop).lower()
+        self.arguments = [Template(x) if isinstance(
+            x, str) else x for x in arguments]
         self.conditions = conditions
         self.subscription = None
 
@@ -66,17 +70,23 @@ class Trigger:
         return all(condition.evaluate(bus, context) for condition in self.conditions)
 
     # TODO: Clean this method up
-    def signal_handler(
+    def get_filter(
         self, context: Context, bus: Bus, callback: Callable[[Context], None]
     ):
+        # TODO: Try to run this function (or at least its callback) on the main thread
+        # TODO: combine the `handler` and `filter` function
         def handler(sender, path, interface, name, arguments):
             if context.debug:
                 print(
                     "Subscription Triggered: ", sender, path, interface, name, arguments
                 )
             expected_arguments = substitute_all(self.arguments, context)
-            for expected, actual in zip(expected_arguments, arguments):
-                if expected != actual:
+            argument_pairs = [(e, a) for e, a in zip(
+                expected_arguments, arguments) if e != None]
+            print(argument_pairs)
+            for expected, actual in argument_pairs:
+                print(expected)
+                if expected != actual and expected != None:
                     if context.debug:
                         print(
                             f"Ignoring due to argument mismatch (expected {expected}, got {actual})"
@@ -96,14 +106,26 @@ class Trigger:
             if self.evaluate(bus, new_context):
                 callback(new_context)
 
-        return handler
+        def filter(conn, message, incoming):
+            if not incoming:
+                return
+            sender = message.get_sender()
+            path = message.get_path()
+            interface = message.get_interface()
+            member = message.get_member()
+            arguments = message.get_body().unpack()
+            handler(sender, path, interface, member, arguments)
+        return filter
 
     def attach(
         self, bus: Bus, context: Context, callback: Callable[[Context], None]
-    ) -> Subscription:
+    ):
         sub_params = substitute_all(self.sub_params, context)
         if context.debug:
             print("Subscribing with params:", sub_params)
-        return bus.subscribe(
-            **sub_params, signal_fired=self.signal_handler(context, bus, callback),
-        )
+
+        match_string = ", ".join(
+            ["{}={}".format(name, val) for name, val in sub_params.items()])
+
+        bus.get('org.freedesktop.DBus').AddMatch(match_string)
+        bus.con.add_filter(self.get_filter(context, bus, callback))

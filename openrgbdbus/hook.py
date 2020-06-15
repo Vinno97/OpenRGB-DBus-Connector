@@ -35,7 +35,6 @@ class Hook:
         self.start_trigger = start_trigger
         self.end_trigger = end_trigger
         self.action = action
-        self.subscriptions: List[Subscription] = []
         self.context = {}
         if not name:
             name = id(self)
@@ -45,15 +44,13 @@ class Hook:
         self.context = Context(context)
 
     def attach(self):
-        subscription = self.start_trigger.attach(
+        self.start_trigger.attach(
             self.bus, self.context, self.get_trigger_handler(self.bus)
         )
-        self.subscriptions.append(subscription)
 
-    # TODO: This responsibility should probably be delegated to the trigger
     def disconnect(self):
-        for subscription in self.subscriptions:
-            subscription.disconnect()
+        # TODO: Add back functionality to clean up subscriptions (delegate to triggers)
+        pass
 
     # TODO: Clean this method up
     def get_trigger_handler(self, bus):
@@ -69,7 +66,6 @@ class Hook:
                 self.action.reset(context)
                 print(f"Hook '{self.name}' halted")
 
-            end_subscription = self.end_trigger.attach(bus, context, _on_end)
-            self.subscriptions.append(end_subscription)
+            self.end_trigger.attach(bus, context, _on_end)
 
         return trigger_func

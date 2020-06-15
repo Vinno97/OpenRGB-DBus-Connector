@@ -87,6 +87,10 @@ class Factory(Generic[T], metaclass=abc.ABCMeta):
         return dict_wrapper
 
     @classmethod
+    def identity(cls, definition):
+        return definition
+
+    @classmethod
     def ignore(cls, *args, **kwargs):
         return cls.__ignore_key
 
@@ -120,7 +124,8 @@ class TriggerFactory(Factory[Trigger]):
                         "path": ("path", str),
                         "interface": ("interface", str),
                         "name": ("name", str),
-                        "arguments": ("arguments", Factory.list(str)),
+                        "eavesdrop": ("eavesdrop", bool),
+                        "arguments": ("arguments", Factory.list(Factory.identity)),
                     }
                 ),
             ],
@@ -156,7 +161,8 @@ class HookFactory(Factory[Hook]):
             "action": ("action", ActionFactory.create),
             "actions": (
                 "action",
-                Factory.reduce(ActionFactory.create, "wrapped_action", BaseAction),
+                Factory.reduce(ActionFactory.create,
+                               "wrapped_action", BaseAction),
             ),
             "trigger": ("start_trigger", TriggerFactory.create),
             "until": ("end_trigger", TriggerFactory.create),
@@ -197,7 +203,8 @@ class ConnectorFactory(Factory[Hook]):
             "server": ("client", ClientFactory.create),
             "default": (
                 "default_action",
-                Factory.reduce(ActionFactory.create, "wrapped_action", BaseAction),
+                Factory.reduce(ActionFactory.create,
+                               "wrapped_action", BaseAction),
             ),
         }
 

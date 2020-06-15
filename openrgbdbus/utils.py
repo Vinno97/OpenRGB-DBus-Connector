@@ -13,10 +13,7 @@ def substitute_all(
     elif type(templates) is dict:
         return {k: substitute_all(v, parameters) for k, v in templates.items()}
     else:
-        raise Exception("Cannot substitute elements of type %s" % str(type(templates)))
-
-
-# TODO: Check for which cases this dict extension suffices and where it does not
+        return templates
 
 
 class Context(dict):

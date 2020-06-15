@@ -1,0 +1,33 @@
+version: 0.2.1
+
+debug: true
+
+hooks:
+  skype:
+    bus: session
+    actions:
+      - device_id: 1
+        zones: [0, 1, 2]
+        color: [37, 211, 102]
+      - device_id: 0
+        zones: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        color: [37, 211, 102]
+    trigger:
+      signal:
+        # path: /org/freedesktop/Notifications
+        interface: org.freedesktop.Notifications
+        name: Notify
+        eavesdrop: true
+        arguments:
+          - Chromium
+          -
+          -
+          -
+          - web.whatsapp.com
+    until:
+      signal:
+        path: /org/gnome/SessionManager
+        interface: org.gnome.SessionManager
+        name: InhibitorRemoved
+        arguments:
+          - ${sig_arg0}
