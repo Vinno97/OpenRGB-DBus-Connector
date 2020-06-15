@@ -25,9 +25,5 @@ hooks:
           -
           - web.whatsapp.com
     until:
-      signal:
-        path: /org/gnome/SessionManager
-        interface: org.gnome.SessionManager
-        name: InhibitorRemoved
-        arguments:
-          - ${sig_arg0}
+      sleep:
+        duration: 1s

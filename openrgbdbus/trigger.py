@@ -1,4 +1,5 @@
 import abc
+import asyncio
 from string import Template
 from typing import Callable, List, Union
 
@@ -6,6 +7,8 @@ from pydbus.bus import Bus
 from pydbus.subscription import Subscription
 
 from .utils import Context, substitute_all
+
+TriggerCallback = Callable[[Context], None]
 
 
 class TriggerCondition:
@@ -39,7 +42,37 @@ class TriggerCondition:
         return result == expected_response
 
 
-class Trigger:
+class TriggerSource(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def activate(self, bus: Bus, context: Context, callback: TriggerCallback):
+        pass
+
+    # @abc.abstractmethod
+    # def deactivate(self):
+    #     pass
+
+
+class Trigger():
+    def __init__(
+        self,
+        source: TriggerSource,
+        conditions: List[TriggerCondition] = [],
+    ):
+        self.source = source
+        self.conditions = conditions
+
+    def evaluate_conditions(self, bus: Bus, context: Context) -> bool:
+        return all(condition.evaluate(bus, context) for condition in self.conditions)
+
+    def activate(self, bus: Bus, context: Context, callback: TriggerCallback):
+        self.source.activate(bus, context, lambda context: callback(
+            context) if self.evaluate_conditions(bus, context) else None)
+
+    def deactivate(self):
+        self.source.deactivate()
+
+
+class DBusTrigger(TriggerSource):
     def __init__(
         self,
         sender: str = None,
@@ -63,13 +96,10 @@ class Trigger:
         self.sub_params["eavesdrop"] = str(eavesdrop).lower()
         self.arguments = [Template(x) if isinstance(
             x, str) else x for x in arguments]
-        self.conditions = conditions
         self.subscription = None
 
-    def evaluate(self, bus: Bus, context={}):
-        return all(condition.evaluate(bus, context) for condition in self.conditions)
-
     # TODO: Clean this method up
+
     def get_filter(
         self, context: Context, bus: Bus, callback: Callable[[Context], None]
     ):
@@ -103,8 +133,8 @@ class Trigger:
                     **{f"sig_arg{i}": v for i, v in enumerate(arguments)},
                 }
             )
-            if self.evaluate(bus, new_context):
-                callback(new_context)
+
+            callback(new_context)
 
         def filter(conn, message, incoming):
             if not incoming:
@@ -117,8 +147,8 @@ class Trigger:
             handler(sender, path, interface, member, arguments)
         return filter
 
-    def attach(
-        self, bus: Bus, context: Context, callback: Callable[[Context], None]
+    def activate(
+        self, bus: Bus, context: Context, callback: TriggerCallback
     ):
         sub_params = substitute_all(self.sub_params, context)
         if context.debug:
@@ -129,3 +159,17 @@ class Trigger:
 
         bus.get('org.freedesktop.DBus').AddMatch(match_string)
         bus.con.add_filter(self.get_filter(context, bus, callback))
+
+
+class SleepTrigger(TriggerSource):
+    def __init__(self, duration):
+        super().__init__()
+        self.duration = duration
+
+    def activate(
+        self, bus: Bus, context: Context, callback: TriggerCallback
+    ):
+        async def trigger():
+            await asyncio.sleep(self.duration)
+            callback(context)
+        asyncio.run(trigger())

@@ -1,4 +1,3 @@
-import abc
 
 import yaml
 from gi.repository import GLib

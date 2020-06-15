@@ -1,4 +1,5 @@
 import abc
+import re
 from types import SimpleNamespace
 from typing import Generic, TypeVar
 
@@ -10,7 +11,7 @@ import openrgbdbus.defaults as defaults
 
 from .actions import Action, BaseAction, ZoneAction
 from .hook import Hook
-from .trigger import Trigger, TriggerCondition
+from .trigger import DBusTrigger, SleepTrigger, Trigger, TriggerCondition
 
 T = TypeVar("T")
 
@@ -112,23 +113,58 @@ class ActionFactory(Factory[Action]):
         return ZoneAction(*args, **kwargs)
 
 
-class TriggerFactory(Factory[Trigger]):
+class DBusTriggerFactory(Factory[DBusTrigger]):
     @classmethod
     def field_factories(cls):
         return {
-            "signal": [
-                "kwargs",
-                Factory.kwargs(
-                    {
-                        "sender": ("sender", str),
-                        "path": ("path", str),
-                        "interface": ("interface", str),
-                        "name": ("name", str),
-                        "eavesdrop": ("eavesdrop", bool),
-                        "arguments": ("arguments", Factory.list(Factory.identity)),
-                    }
-                ),
-            ],
+            "sender": ("sender", str),
+            "path": ("path", str),
+            "interface": ("interface", str),
+            "name": ("name", str),
+            "eavesdrop": ("eavesdrop", bool),
+            "arguments": ("arguments", Factory.list(Factory.identity)),
+        }
+
+    @classmethod
+    def construct_instance(cls, *args, **kwargs):
+        return DBusTrigger(*args, **kwargs)
+
+
+class SleepTriggerFactory(Factory[SleepTrigger]):
+    @classmethod
+    def field_factories(cls):
+        return {
+            # TODO: See how 'duration' does not explicitly have to be specified in the yaml (i.e. just sleep: 1s)
+            "duration": ("duration", SleepTriggerFactory.parse_time),
+        }
+
+    @classmethod
+    def parse_time(cls, definition: str):
+        try:
+            duration, modifier = re.match(r"(\d+)(\w+)", definition)[0]
+        except:
+            raise Exception(
+                "'duration' should be in the form of amount:unit (int:string)"
+            )
+
+        acceptable_modifiers = {"ms": 1/1000, "s": 1, "m": 60, "h": 60*60}
+        if modifier not in acceptable_modifiers:
+            raise Exception(
+                "Unsupported duration modifier: {}".format(modifier))
+
+        return int(duration) * acceptable_modifiers[modifier]
+
+    @classmethod
+    def construct_instance(cls, *args, **kwargs):
+        return SleepTrigger(*args, **kwargs)
+
+
+class TriggerFactory(Factory[DBusTrigger]):
+    @classmethod
+    def field_factories(cls):
+        return {
+            "signal": ("source", DBusTriggerFactory.create),
+            "sleep": ("source", SleepTriggerFactory.create),
             "conditions": ("conditions", Factory.list(TriggerConditionFactory.create)),
         }
 

@@ -1,4 +1,3 @@
-import abc
 from string import Template
 from typing import Callable, List, Union
 
@@ -6,7 +5,7 @@ from pydbus.bus import Bus, bus_get
 from pydbus.subscription import Subscription
 
 from .actions import Action
-from .trigger import Trigger
+from .trigger import DBusTrigger
 from .utils import Context, substitute_all
 
 
@@ -25,8 +24,8 @@ def bus_from_name(name: str):
 class Hook:
     def __init__(
         self,
-        start_trigger: Trigger,
-        end_trigger: Trigger,
+        start_trigger: DBusTrigger,
+        end_trigger: DBusTrigger,
         action: Action,
         bus_name: str = "session",
         name: str = None,
@@ -44,7 +43,7 @@ class Hook:
         self.context = Context(context)
 
     def attach(self):
-        self.start_trigger.attach(
+        self.start_trigger.activate(
             self.bus, self.context, self.get_trigger_handler(self.bus)
         )
 
@@ -58,14 +57,14 @@ class Hook:
             print(f"Hook '{self.name}' activated")
 
             self.action.act(context)
-            end_subscription: Subscription = None
+            # end_subscription: Subscription = None
 
             def _on_end(*args, **kwargs):
-                end_subscription.disconnect()
-                self.subscriptions.remove(end_subscription)
+                # end_subscription.disconnect()
+                # self.subscriptions.remove(end_subscription)
                 self.action.reset(context)
                 print(f"Hook '{self.name}' halted")
 
-            self.end_trigger.attach(bus, context, _on_end)
+            self.end_trigger.activate(bus, context, _on_end)
 
         return trigger_func
