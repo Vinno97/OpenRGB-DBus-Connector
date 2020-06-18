@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import yaml
@@ -50,6 +51,9 @@ class Connector:
             hook.set_context(self.context)
 
     def start(self):
+        # Just call this once to ensure there is a default event loop.
+        asyncio.get_event_loop()
+
         if self.default_action:
             self.default_action.act(self.context)
             print("Initialized with default actions")
@@ -57,12 +61,15 @@ class Connector:
         for name, hook in self.hooks.items():
             hook.attach()
 
+        asyncio.get_event_loop().run_forever()
+
         print("%d hooks attached" % len(self.hooks))
 
         self.loop.run()
 
     def stop(self):
         self.loop.quit()
+        asyncio.get_event_loop().stop()
 
         for name, hook in self.hooks.items():
             hook.disconnect()
