@@ -1,3 +1,4 @@
+import logging
 
 import yaml
 from gi.repository import GLib
@@ -9,7 +10,7 @@ from openrgbdbus.actions import Action
 from .initialization import ConnectorFactory
 from .utils import Context
 
-_config_ver = "0.2.1"
+_config_ver = "0.3.0"
 
 
 class Connector:
@@ -25,9 +26,13 @@ class Connector:
             # Else assume the argument is the already parsed configuration
             definition = configuration
 
-        assert version.parse(_config_ver) >= version.parse(
-            definition["version"])
+        assert version.parse(_config_ver) >= version.parse(definition["version"])
 
+        if "logging" in definition:
+            numeric_level = getattr(logging, definition["logging"].upper(), None)
+            if not isinstance(numeric_level, int):
+                raise ValueError("Invalid log level: %s" % definition["logging"])
+            logging.basicConfig(level=numeric_level)
         return ConnectorFactory.create(definition, create_key=cls.__create_key)
 
     def __init__(

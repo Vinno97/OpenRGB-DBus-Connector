@@ -235,12 +235,11 @@ class ConnectorFactory(Factory[Hook]):
         return {
             "hooks": ("hooks", Factory.dict(HookFactory.create)),
             "version": ("", Factory.ignore),
-            "debug": ("debug", bool),
+            "logging": ("", Factory.ignore),
             "server": ("client", ClientFactory.create),
             "default": (
                 "default_action",
-                Factory.reduce(ActionFactory.create,
-                               "wrapped_action", BaseAction),
+                Factory.reduce(ActionFactory.create, "wrapped_action", BaseAction),
             ),
         }
 
