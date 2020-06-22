@@ -1,0 +1,27 @@
+version: 0.3.0
+
+logging: debug
+
+server:
+  port: 6742
+
+hooks:
+  general_notifications:
+    bus: session
+    actions:
+      - device_id: 1
+        zones: [0, 1, 2]
+        color: [255, 255, 0]
+      - device_id: 0
+        zones: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        color: [255, 255, 0]
+    trigger:
+      signal:
+        path: /org/freedesktop/Notifications
+        interface: org.freedesktop.Notifications
+        name: Notify
+        eavesdrop: true
+        destination: org.freedesktop.Notifications
+    until:
+      sleep:
+        duration: 1s

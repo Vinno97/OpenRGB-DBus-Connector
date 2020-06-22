@@ -63,12 +63,12 @@ class Hook:
         def trigger_func(context):
             logging.info(f"Hook '{self.name}' activated")
 
-            self.action.act(context)
+            action_cookie = self.action.act(context)
 
             def _on_end(*args, **kwargs):
-                # end_subscription.disconnect()
+                self.action.reset(action_cookie, context)
                 logging.info(f"Hook '{self.name}' halted")
-                self.action.reset(context)
+                self._cancel_subscription(subscription)
 
             subscription = self.end_trigger.subscribe(bus, context, _on_end)
             self.subscriptions.append(subscription)
