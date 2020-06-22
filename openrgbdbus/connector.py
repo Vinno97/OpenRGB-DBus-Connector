@@ -47,7 +47,7 @@ class Connector:
         self.loop = GLib.MainLoop()
         self.default_action = default_action
         self.context = Context({"rgb_client": client, "debug": debug})
-        for hook in self.hooks.values():
+        for hook in self.hooks:
             hook.set_context(self.context)
 
     def start(self):
@@ -58,7 +58,7 @@ class Connector:
             self.default_action.act(self.context)
             print("Initialized with default actions")
 
-        for name, hook in self.hooks.items():
+        for hook in self.hooks:
             hook.attach()
 
         asyncio.get_event_loop().run_forever()
@@ -71,7 +71,7 @@ class Connector:
         self.loop.quit()
         asyncio.get_event_loop().stop()
 
-        for name, hook in self.hooks.items():
+        for hook in self.hooks:
             hook.disconnect()
 
         print("%d hooks removed" % len(self.hooks))

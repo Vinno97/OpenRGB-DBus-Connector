@@ -88,6 +88,17 @@ class Factory(Generic[T], metaclass=abc.ABCMeta):
         return dict_wrapper
 
     @classmethod
+    def dict_to_list(cls, func, keyarg):
+        def dict_wrapper(definition_dict):
+            retval = [
+                func(definition, **{keyarg: name})
+                for name, definition in definition_dict.items()
+            ]
+            return retval
+
+        return dict_wrapper
+
+    @classmethod
     def identity(cls, definition):
         return definition
 
@@ -233,7 +244,7 @@ class ConnectorFactory(Factory[Hook]):
     @classmethod
     def field_factories(cls):
         return {
-            "hooks": ("hooks", Factory.dict(HookFactory.create)),
+            "hooks": ("hooks", Factory.dict_to_list(HookFactory.create, keyarg="name")),
             "version": ("", Factory.ignore),
             "logging": ("", Factory.ignore),
             "server": ("client", ClientFactory.create),
