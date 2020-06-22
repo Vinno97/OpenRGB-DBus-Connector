@@ -152,16 +152,15 @@ class SleepTriggerFactory(Factory[SleepTrigger]):
     @classmethod
     def parse_time(cls, definition: str):
         try:
-            duration, modifier = re.match(r"(\d+)(\w+)", definition)[0]
+            duration, modifier = re.match(r"(\d+)(\w+)", definition).groups()
         except:
             raise Exception(
                 "'duration' should be in the form of amount:unit (int:string)"
             )
 
-        acceptable_modifiers = {"ms": 1/1000, "s": 1, "m": 60, "h": 60*60}
+        acceptable_modifiers = {"ms": 1 / 1000, "s": 1, "m": 60, "h": 60 * 60}
         if modifier not in acceptable_modifiers:
-            raise Exception(
-                "Unsupported duration modifier: {}".format(modifier))
+            raise Exception("Unsupported duration modifier: {}".format(modifier))
 
         return int(duration) * acceptable_modifiers[modifier]
 
