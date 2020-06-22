@@ -1,3 +1,4 @@
+import logging
 from string import Template
 from typing import Callable, List, Union
 
@@ -5,7 +6,7 @@ from pydbus.bus import Bus, bus_get
 from pydbus.subscription import Subscription
 
 from .actions import Action
-from .trigger import DBusTrigger
+from .trigger import Trigger, TriggerSubscription
 from .utils import Context, substitute_all
 
 
@@ -24,8 +25,8 @@ def bus_from_name(name: str):
 class Hook:
     def __init__(
         self,
-        start_trigger: DBusTrigger,
-        end_trigger: DBusTrigger,
+        start_trigger: Trigger,
+        end_trigger: Trigger,
         action: Action,
         bus_name: str = "session",
         name: str = None,
@@ -38,33 +39,38 @@ class Hook:
         if not name:
             name = id(self)
         self.name = name
+        self.subscriptions: List[TriggerSubscription] = []
 
     def set_context(self, context: Context):
         self.context = Context(context)
 
     def attach(self):
-        self.start_trigger.activate(
-            self.bus, self.context, self.get_trigger_handler(self.bus)
+        self.subscriptions.append(
+            self.start_trigger.subscribe(
+                self.bus, self.context, self._get_trigger_handler(self.bus)
+            )
         )
 
     def disconnect(self):
-        # TODO: Add back functionality to clean up subscriptions (delegate to triggers)
-        pass
+        for subscription in self.subscriptions:
+            self._cancel_subscription(subscription)
 
-    # TODO: Clean this method up
-    def get_trigger_handler(self, bus):
+    def _cancel_subscription(self, subscription: TriggerSubscription):
+        subscription.cancel()
+        self.subscriptions.remove(subscription)
+
+    def _get_trigger_handler(self, bus):
         def trigger_func(context):
-            print(f"Hook '{self.name}' activated")
+            logging.info(f"Hook '{self.name}' activated")
 
             self.action.act(context)
-            # end_subscription: Subscription = None
 
             def _on_end(*args, **kwargs):
                 # end_subscription.disconnect()
-                # self.subscriptions.remove(end_subscription)
+                logging.info(f"Hook '{self.name}' halted")
                 self.action.reset(context)
-                print(f"Hook '{self.name}' halted")
 
-            self.end_trigger.activate(bus, context, _on_end)
+            subscription = self.end_trigger.subscribe(bus, context, _on_end)
+            self.subscriptions.append(subscription)
 
         return trigger_func

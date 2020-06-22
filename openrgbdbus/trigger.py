@@ -42,30 +42,23 @@ class TriggerCondition:
         return result == expected_response
 
 
+class TriggerSubscription:
+    def __init__(self, on_cancel):
+        super().__init__()
+        self._on_cancel = on_cancel
+
+    def cancel(self):
+        self._on_cancel()
+
+
 class TriggerSource(metaclass=abc.ABCMeta):
     def __init__(self):
         super().__init__()
-        self.activated = False
-
-    def activate(self, bus: Bus, context: Context, callback: TriggerCallback):
-        if self.activated:
-            raise Exception("TriggerSource is already activated")
-
-        self._on_activate(bus, context, callback)
-        self.activated = True
-
-    def deactivate(self, bus: Bus, context: Context):
-        if not self.activated:
-            raise Exception("TriggerSource is not yet already activated")
-        self._on_deactivate(bus, context)
-        self.activated = False
 
     @abc.abstractmethod
-    def _on_activate(self, bus: Bus, context: Context, callback: TriggerCallback):
-        pass
-
-    @abc.abstractmethod
-    def _on_deactivate(self, bus: Bus, context: Context):
+    def subscribe(
+        self, bus: Bus, context: Context, callback: TriggerCallback
+    ) -> TriggerSubscription:
         pass
 
 
@@ -79,17 +72,19 @@ class Trigger:
     def evaluate_conditions(self, bus: Bus, context: Context) -> bool:
         return all(condition.evaluate(bus, context) for condition in self.conditions)
 
-    def activate(self, bus: Bus, context: Context, callback: TriggerCallback):
-        self.source.activate(
-            bus,
-            context,
-            lambda context: callback(context)
-            if self.evaluate_conditions(bus, context)
-            else None,
-        )
+    def subscribe(
+        self, bus: Bus, context: Context, callback: TriggerCallback
+    ) -> TriggerSubscription:
+        def callback_wrapper(*args, **kwargs):
 
-    def deactivate(self):
-        self.source.deactivate()
+            try:
+                if self.evaluate_conditions(bus, context):
+                    callback(*args, **kwargs)
+            except Exception as ex:
+                logging.critical("Unhandled exception in callback task: ", exc_info=ex)
+                exit(1)
+
+        return self.source.subscribe(bus, context, callback_wrapper)
 
 
 class DBusTrigger(TriggerSource):
@@ -123,35 +118,35 @@ class DBusTrigger(TriggerSource):
                 print(
                     "'hook.destination' should only be used together with 'hook.eavesdrop. Ignoring..."
                 )
-        self.sub_params["eavesdrop"] = str(eavesdrop).lower()
+        if eavesdrop:
+            self.sub_params["eavesdrop"] = str(eavesdrop).lower()
         self.arguments = [Template(x) if isinstance(x, str) else x for x in arguments]
-        self.subscription = None
-        self.filter = None
-        self.task = None
 
-    # TODO: Clean this method up
+    # TODO: Clean this method ups
 
-    def create_filter(
-        self, context: Context, bus: Bus, callback: Callable[[Context], None]
-    ):
+    def create_filter(self, context: Context, bus: Bus, callback: TriggerCallback):
         async def make_callback(*args, **kwargs):
-            print("yeehaw")
             callback(*args, **kwargs)
 
         event_loop = asyncio.get_event_loop()
 
         def filter(conn, message, incoming):
-            if incoming:
-                if self._should_handle(message, context):
+            try:
+                if incoming and self._should_handle(message, context):
                     new_context = self.construct_callback_context(context, message)
-                    asyncio.run_coroutine_threadsafe(make_callback(context), event_loop)
-            return message
+                    asyncio.run_coroutine_threadsafe(
+                        make_callback(new_context), event_loop
+                    )
+                return message
+            except Exception as ex:
+                logging.critical("Unhandled exception in filter thread: ", exc_info=ex)
+                exit(1)
 
         return filter
 
     def construct_callback_context(self, context: Context, message) -> Context:
-        new_context = Context(context)
-        new_context.update(
+        return Context(
+            context,
             {
                 "sig_sender": message.get_sender(),
                 "sig_path": message.get_path(),
@@ -159,10 +154,12 @@ class DBusTrigger(TriggerSource):
                 "sig_name": message.get_member(),
                 "sig_destination": message.get_destination(),
                 **{f"sig_arg{i}": v for i, v in enumerate(message.get_body().unpack())},
-            }
+            },
         )
 
-    def _on_activate(self, bus: Bus, context: Context, callback: TriggerCallback):
+    def subscribe(
+        self, bus: Bus, context: Context, callback: TriggerCallback
+    ) -> TriggerSubscription:
 
         sub_params = substitute_all(self.sub_params, context)
         logging.info("Subscribing with params: %s", sub_params)
@@ -172,12 +169,13 @@ class DBusTrigger(TriggerSource):
         )
 
         bus.get("org.freedesktop.DBus").AddMatch(match_string)
-        self.filter = bus.con.add_filter(self.create_filter(context, bus, callback))
+        _filter = bus.con.add_filter(self.create_filter(context, bus, callback))
 
-    def _on_deactivate(self, bus: Bus, context: Context):
-        bus.con.remove_filter(self.filter)
-        self.filter = None
-        self.task.stop()
+        def unsubscribe(_filter=_filter, bus=bus):
+            bus.con.remove_filter(_filter)
+            bus.get("org.freedesktop.DBus").RemoveMatch(match_string)
+
+        return TriggerSubscription(unsubscribe)
 
     def _should_handle(self, message, context: Context) -> bool:
         """Check if the trigger should be tripped by the message"""
@@ -196,9 +194,9 @@ class DBusTrigger(TriggerSource):
             expected = sub_params[key]
             actual = message_params[key]
             if expected and expected != actual:
-                logging.debug(
-                    f"Ignoring message due to {key} mismatch (expected {expected}, got {actual})"
-                )
+                # logging.debug(
+                #     f"Ignoring message due to {key} mismatch (expected {expected}, got {actual})"
+                # )
                 return False
 
         if not self._validate_arguments(message, context):
@@ -216,9 +214,9 @@ class DBusTrigger(TriggerSource):
         filtered_pairs = ((e, a) for e, a in argument_pairs if e != None)
         for expected_arg, actual in filtered_pairs:
             if expected_arg != actual:
-                logging.debug(
-                    f"Ignoring message due to argument mismatch (expected {expected_args}, got {actual})"
-                )
+                # logging.debug(
+                #     f"Ignoring message due to argument mismatch (expected {expected_args}, got {actual})"
+                # )
                 return False
         return True
 
@@ -227,15 +225,17 @@ class SleepTrigger(TriggerSource):
     def __init__(self, duration):
         super().__init__()
         self.duration = duration
-        self.task = None
 
-    def _on_activate(self, bus: Bus, context: Context, callback: TriggerCallback):
+    def _on_activate(self, bus: Bus, context: Context):
+        pass
+
+    def subscribe(
+        self, bus: Bus, context: Context, callback: TriggerCallback
+    ) -> TriggerSubscription:
         async def trigger():
             await asyncio.sleep(self.duration)
             logging.info("Sleep trigger activated after %d seconds", self.duration)
             callback(context)
 
-        self.task = asyncio.get_event_loop().create_task(trigger())
-
-    def _on_deactivate(self):
-        self.task.stop()
+        task = asyncio.get_event_loop().create_task(trigger())
+        return TriggerSubscription(lambda task=task: task.cancel())

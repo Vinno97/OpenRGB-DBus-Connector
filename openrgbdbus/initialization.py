@@ -134,6 +134,7 @@ class DBusTriggerFactory(Factory[DBusTrigger]):
             "name": ("name", str),
             "eavesdrop": ("eavesdrop", bool),
             "arguments": ("arguments", Factory.list(Factory.identity)),
+            "destination": ("destination", str),
         }
 
     @classmethod
@@ -207,8 +208,7 @@ class HookFactory(Factory[Hook]):
             "action": ("action", ActionFactory.create),
             "actions": (
                 "action",
-                Factory.reduce(ActionFactory.create,
-                               "wrapped_action", BaseAction),
+                Factory.reduce(ActionFactory.create, "wrapped_action", BaseAction),
             ),
             "trigger": ("start_trigger", TriggerFactory.create),
             "until": ("end_trigger", TriggerFactory.create),
