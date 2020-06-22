@@ -10,11 +10,6 @@ from openrgb.utils import DeviceType, RGBColor
 
 from .utils import Context, dict_merge
 
-
-class LedState:
-    pass
-
-
 ActionCookie = int
 StackState = dict
 
@@ -133,10 +128,6 @@ class ActionStack:
             rgb_obj.set_color(state_obj["color"])
 
 
-# TODO: Make it so that this stack is not randomly defined in the body of this file.
-action_stack = ActionStack(OpenRGBClient(port=6742))
-
-
 class BaseAction:
     def act(self, context: Context = Context()):
         pass
@@ -148,19 +139,6 @@ class BaseAction:
         return {}
 
 
-class NoopAction(BaseAction):
-    def __init__(self):
-        super().__init__()
-
-    def act(self, context: Context = Context()):
-        if context.debug:
-            print("(%s): Act!" % id(self))
-
-    def reset(self, context: Context = Context()):
-        if context.debug:
-            print("(%s): Reset!" % id(self))
-
-
 class Action(BaseAction):
     def __init__(self, wrapped_action):
         super().__init__()
@@ -168,7 +146,7 @@ class Action(BaseAction):
 
     def act(self, context: Context):
         state = self.construct_state()
-        return action_stack.push_state(state)
+        return context.action_stack.push_state(state)
 
     def construct_state(self):
         state = self._construct_state()
@@ -180,7 +158,7 @@ class Action(BaseAction):
         return {}
 
     def reset(self, cookie, context: Context):
-        action_stack.remove_state(cookie)
+        context.action_stack.remove_state(cookie)
 
 
 class ZoneAction(Action):

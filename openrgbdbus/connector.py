@@ -6,7 +6,7 @@ from gi.repository import GLib
 from packaging import version
 from pydbus import SessionBus
 
-from openrgbdbus.actions import Action
+from openrgbdbus.actions import Action, ActionStack
 
 from .initialization import ConnectorFactory
 from .utils import Context
@@ -46,7 +46,13 @@ class Connector:
         self.client = client
         self.loop = GLib.MainLoop()
         self.default_action = default_action
-        self.context = Context({"rgb_client": client, "debug": debug})
+        self.context = Context(
+            {
+                # "rgb_client": client,
+                "debug": debug,
+                "action_stack": ActionStack(client),
+            }
+        )
         for hook in self.hooks:
             hook.set_context(self.context)
 
