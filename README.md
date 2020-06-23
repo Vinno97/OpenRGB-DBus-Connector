@@ -63,11 +63,11 @@ This project is still in its very early stages and should not be viewed as a fin
 
 * [x] Add conditional value checks for arguments (evaluate response of D-Bus methods after signal is received).
 * [x] Reset lights to their original state after event has passed.
-* [ ] Make `until` hooks optional (for one-shot hooks)
+* [x] Make `until` hooks optional (for one-shot hooks)
 * [x] Add timed hooks (Stop effect after delay instead of waiting for a stopping trigger).
 * [x] Add zone control.
 * [ ] Make optional D-Bus properties for signals and conditions actually optional.
-* [ ] Extend conditional checks to support methods that return non-string responses (ints, arrays, objects, etc.). 
+* [x] Extend conditional checks to support methods that return non-string responses (ints, arrays, objects, etc.). 
 * [ ] Allow for easier configuration (no hard-coded config, multiple files, etc.).
 * [x] Clean file structure.
 * [ ] Add support for controlling animations/modes.
