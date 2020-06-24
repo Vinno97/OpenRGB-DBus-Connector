@@ -68,7 +68,7 @@ This project is still in its very early stages and should not be viewed as a fin
 * [x] Add zone control.
 * [ ] Make optional D-Bus properties for signals and conditions actually optional.
 * [x] Extend conditional checks to support methods that return non-string responses (ints, arrays, objects, etc.). 
-* [ ] Allow for easier configuration (no hard-coded config, multiple files, etc.).
+* [x] Allow for easier configuration (no hard-coded config, multiple files, etc.).
 * [x] Clean file structure.
 * [ ] Add support for controlling animations/modes.
 * [ ] Write proper documentation.
