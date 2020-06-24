@@ -19,7 +19,7 @@ server: # Optional way to specify the location of the OpenRGB SDK
   host: <host where the OpenRGB SDK is running. Defaults to 'localhost'>
   port: <port that the OpenRGB SDK is attached to. Defaults to 6742>
 
-debug: <optional boolean flag to enable debug logging, defaults to false>
+logging: <optional verbosity level for logging. One of [debug | info | warning | error | critical]>
 
 default: # Optional list of actions to run when the program is started.
   - device_id: <numerical id of device controller>
@@ -61,21 +61,21 @@ This project is still in its very early stages and should not be viewed as a fin
 
 ## TODO
 
-* [x] Add conditional value checks for arguments (evaluate response of D-Bus methods after signal is received).
-* [x] Reset lights to their original state after event has passed.
-* [x] Make `until` hooks optional (for one-shot hooks)
-* [x] Add timed hooks (Stop effect after delay instead of waiting for a stopping trigger).
-* [x] Add zone control.
-* [ ] Make optional D-Bus properties for signals and conditions actually optional.
-* [x] Extend conditional checks to support methods that return non-string responses (ints, arrays, objects, etc.). 
-* [x] Allow for easier configuration (no hard-coded config, multiple files, etc.).
-* [x] Clean file structure.
-* [ ] Add support for controlling animations/modes.
-* [ ] Write proper documentation.
-* [x] Allow the OpenRGB server port to be changed.
-* [ ] Write more example configurations.
-* [ ] Allow loading of profiles (how should these be reset?)
-* [ ] Implement more advanced templating ([Jinja?](http://zetcode.com/python/jinja/)).
+- [x] Add conditional value checks for arguments (evaluate response of D-Bus methods after signal is received).
+- [x] Reset lights to their original state after event has passed.
+- [x] Make `until` hooks optional (for one-shot hooks)
+- [x] Add timed hooks (Stop effect after delay instead of waiting for a stopping trigger).
+- [x] Add zone control.
+- [ ] Make optional D-Bus properties for signals and conditions actually optional.
+- [x] Extend conditional checks to support methods that return non-string responses (ints, arrays, objects, etc.).
+- [x] Allow for easier configuration (no hard-coded config, multiple files, etc.).
+- [x] Clean file structure.
+- [ ] Add support for controlling animations/modes.
+- [ ] Write proper documentation.
+- [x] Allow the OpenRGB server port to be changed.
+- [ ] Write more example configurations.
+- [ ] Allow loading of profiles (how should these be reset?)
+- [ ] Implement more advanced templating ([Jinja?](http://zetcode.com/python/jinja/)).
 
 ## Special thanks to
 
