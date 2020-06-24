@@ -1,9 +1,9 @@
 version: 0.2.1
 
-debug: true
+logging: info
 
 hooks:
-  skype:
+  whatsapp:
     bus: session
     actions:
       - device_id: 1
@@ -14,10 +14,12 @@ hooks:
         color: [37, 211, 102]
     trigger:
       signal:
-        # path: /org/freedesktop/Notifications
+        path: /org/freedesktop/Notifications
         interface: org.freedesktop.Notifications
         name: Notify
         eavesdrop: true
+        # Chromium seems to maketwo Notify calls, but we only want to trigger once. Luckily only one of them is to org.freedesktop.Notifications
+        destination: org.freedesktop.Notifications
         arguments:
           - Chromium
           -
