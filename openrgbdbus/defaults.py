@@ -1,6 +1,6 @@
 client = {
     "host": "localhost",
-    "port": 1337,
+    "port": 6742,
     "display_name": "D-Bus Connector",
 }
 

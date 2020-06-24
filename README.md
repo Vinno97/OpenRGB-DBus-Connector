@@ -17,7 +17,7 @@ version: <version number for config format>
 
 server: # Optional way to specify the location of the OpenRGB SDK
   host: <host where the OpenRGB SDK is running. Defaults to 'localhost'>
-  port: <port that the OpenRGB SDK is attached to. Defaults to 1337>
+  port: <port that the OpenRGB SDK is attached to. Defaults to 6742>
 
 debug: <optional boolean flag to enable debug logging, defaults to false>
 
