@@ -1,17 +1,12 @@
 import asyncio
-import logging
 
-import yaml
 from gi.repository import GLib
-from packaging import version
 from pydbus import SessionBus
 
 from openrgbdbus.actions import Action, ActionStack
 
-from .initialization import ConnectorFactory
+from .configuration import ConfigurationParser
 from .utils import Context
-
-_config_ver = "0.3.0"
 
 
 class Connector:
@@ -19,22 +14,10 @@ class Connector:
 
     @classmethod
     def fromConfig(cls, configuration):
-        if isinstance(configuration, str):
-            # Load the configuration file if a string (assumed path) is provided
-            with open(configuration, "r") as f:
-                definition = yaml.safe_load(f)
-        else:
-            # Else assume the argument is the already parsed configuration
-            definition = configuration
 
-        assert version.parse(_config_ver) >= version.parse(definition["version"])
-
-        if "logging" in definition:
-            numeric_level = getattr(logging, definition["logging"].upper(), None)
-            if not isinstance(numeric_level, int):
-                raise ValueError("Invalid log level: %s" % definition["logging"])
-            logging.basicConfig(level=numeric_level)
-        return ConnectorFactory.create(definition, create_key=cls.__create_key)
+        return (
+            ConfigurationParser().load(configuration).createConnector(cls.__create_key)
+        )
 
     def __init__(
         self, create_key, hooks, client, debug=False, default_action: Action = None

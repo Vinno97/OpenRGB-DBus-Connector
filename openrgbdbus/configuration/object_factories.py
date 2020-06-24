@@ -9,9 +9,9 @@ from openrgb import OpenRGBClient
 import openrgbdbus.connector
 import openrgbdbus.defaults as defaults
 
-from .actions import Action, BaseAction, ZoneAction
-from .hook import Hook
-from .trigger import DBusTrigger, SleepTrigger, Trigger, TriggerCondition
+from ..actions import Action, BaseAction, ZoneAction
+from ..hook import Hook
+from ..trigger import DBusTrigger, SleepTrigger, Trigger, TriggerCondition
 
 T = TypeVar("T")
 
@@ -115,6 +115,7 @@ class ActionFactory(Factory[Action]):
             # "leds": ("leds", Factory.list(int)),
             "zones": ("zones", Factory.list(int)),
             "color": ("color", Factory.list(int)),
+            "colors": ("colors", Factory.list(Factory.list(int))),
             "arguments": ("arguments", Factory.list(str)),
         }
 

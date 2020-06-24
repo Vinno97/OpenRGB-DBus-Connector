@@ -234,7 +234,7 @@ class SleepTrigger(TriggerSource):
     ) -> TriggerSubscription:
         async def trigger():
             await asyncio.sleep(self.duration)
-            logging.info("Sleep trigger activated after %d seconds", self.duration)
+            logging.debug("Sleep trigger activated after %d seconds", self.duration)
             callback(context)
 
         task = asyncio.get_event_loop().create_task(trigger())

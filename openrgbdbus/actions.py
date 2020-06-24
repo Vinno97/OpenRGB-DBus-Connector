@@ -166,6 +166,7 @@ class ZoneAction(Action):
         self,
         wrapped_action: Action,
         zones: List[int],
+        leds: List[int] = None,
         color: List[int] = None,
         colors: List[List[int]] = None,
         device=None,
@@ -173,24 +174,35 @@ class ZoneAction(Action):
     ):
         super().__init__(wrapped_action)
         self.zones = zones
-        self.color = color
-        self.colors = color
-        if self.color is None and self.colors is None:
+        self.leds = leds
+        self.color = None
+        self.colors = None
+        if color:
+            self.color = RGBColor(*color)
+        elif colors:
+            self.colors = [RGBColor(*color) for color in colors]
+        else:
             raise Exception("Either 'color' or 'colors' should be set")
         # TODO: Add option to set modes
         # self.mode = mode
         self.device = device
-        # self.previous_colors = None
 
     def _construct_state(self, context: Context = Context()) -> StackState:
-        color = RGBColor(*self.color)
-        # TODO: find a better way to determine the amount of leds
+
+        if self.colors:
+            color_key = "colors"
+            color_val = self.colors
+        else:
+            color_key = "color"
+            color_val = self.color
 
         state = {
             "devices": [
                 {
                     "id": self.device,
-                    "zones": [{"id": zone, "color": color} for zone in self.zones],
+                    "zones": [
+                        {"id": zone, color_key: color_val} for zone in self.zones
+                    ],
                 }
             ]
         }
