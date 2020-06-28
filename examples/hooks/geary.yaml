@@ -1,0 +1,22 @@
+# Briefly turns the lights yellow when Geary receives a new e-mail.
+
+bus: session
+actions:
+  - device_id: 1
+    zones: [0, 1, 2]
+    color: [255, 255, 0]
+  - device_id: 0
+    zones: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    color: [255, 255, 0]
+trigger:
+  signal:
+    path: /org/gtk/Notifications
+    interface: org.gtk.Notifications
+    name: AddNotification
+    eavesdrop: true
+    arguments:
+      - org.gnome.Geary
+      - email-arrived
+until:
+  sleep:
+    duration: 1s
