@@ -8,5 +8,6 @@ server:
 hooks:
   skype: !include hooks/skype.yaml
   whatsapp: !include hooks/whatsapp.yaml
+  night_light: !include hooks/night_light.yaml
   # Disabled as it interferes any other notification based hook.
   # general_notifications: !include hooks/notifications.yaml
