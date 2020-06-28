@@ -1,3 +1,5 @@
+# This hook is activated when the GNOME night light is activated and runs until night light is deactivated again.
+
 bus: session
 actions:
   - device_id: 1

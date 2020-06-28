@@ -1,3 +1,5 @@
+# Turns lights Skype-blue when Skype is ringing
+
 bus: session
 actions:
   - device_id: 1

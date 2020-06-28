@@ -1,3 +1,9 @@
+# Turn lights WhatsApp-Green for one second when there's a notification coming from Web
+# Whatsapp through Chromium.
+# Sadly this method does not work on Firefox, since it does not share the source of the
+# notification through the D-Bus.
+# Chrome would probably also work, if `Chromium` was changed to `Chrome`.
+
 bus: session
 actions:
   - device_id: 1

@@ -1,9 +1,11 @@
+# This hook turns the lights yellow, each time a notification is shown
+
 bus: session
 actions:
   - device_id: 1
     zones: [0, 1, 2]
     colors:
-      - [255, 0, 0]
+      - [255, 255, 0]
   - device_id: 0
     zones: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     color: [255, 255, 0]
