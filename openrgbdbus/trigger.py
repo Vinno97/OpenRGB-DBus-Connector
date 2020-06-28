@@ -78,7 +78,7 @@ class Trigger:
         def callback_wrapper(*args, **kwargs):
 
             try:
-                if self.evaluate_conditions(bus, context):
+                if self.evaluate_conditions(bus, args[0]):
                     callback(*args, **kwargs)
             except Exception as ex:
                 logging.critical("Unhandled exception in callback task: ", exc_info=ex)
