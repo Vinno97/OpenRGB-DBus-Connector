@@ -59,6 +59,12 @@ Example configurations can be found in `./examples`.
 
 This project is still in its very early stages and should not be viewed as a finished product. The code is architectually sound, but the file structure follows the "I need it here, so I write it here"-ideology.
 
+## Dependencies
+ * [openrgb-python](https://github.com/jath03/openrgb-python)
+ * pydbus
+ * pyyaml
+ * jinja2
+
 ## TODO
 
 - [x] Add conditional value checks for arguments (evaluate response of D-Bus methods after signal is received).
@@ -75,7 +81,10 @@ This project is still in its very early stages and should not be viewed as a fin
 - [x] Allow the OpenRGB server port to be changed.
 - [ ] Write more example configurations.
 - [ ] Allow loading of profiles (how should these be reset?)
-- [ ] Implement more advanced templating ([Jinja?](http://zetcode.com/python/jinja/)).
+- [x] Implement more advanced templating ([Jinja?](http://zetcode.com/python/jinja/)).
+- [ ] Implement better config validation (Jinja results can return anything)
+- [ ] Smarter (and faster) action stack resolution
+  - [ ] Fix state getting stuck when spammed (`examples/hooks/smooth_night_light.yaml`)
 
 ## Special thanks to
 

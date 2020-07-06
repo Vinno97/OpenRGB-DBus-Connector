@@ -1,0 +1,36 @@
+# This hook is activated when the GNOME night light is activated and runs until night
+# light is deactivated again. It sets the colors of the PC to a tint that resembles the
+# color temperature of the screen.
+# NOTE 1/1: Due to the nature of Night Light, this ranges from bright white to orange.
+# It does not take the starting current color into consideration. This means that as
+# soon as Night Light starts to a activate, the PC will turn white.
+# NOTE 2/2: There's currently a bug that causes not all actions of this hook to be
+# reset. This puts the lights into a permanent state of white after the Night Light
+# phase finished.
+
+bus: session
+actions:
+  - device_id: 1
+    zones: [0, 1, 2]
+    color: "{{utils.temperature_to_rgb(sig_arg1.Temperature)}}"
+  - device_id: 0
+    zones: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    color: "{{utils.temperature_to_rgb(sig_arg1.Temperature)}}"
+trigger:
+  signal:
+    path: /org/gnome/SettingsDaemon/Color
+    interface: org.freedesktop.DBus.Properties
+    name: PropertiesChanged
+    eavesdrop: true
+    arguments:
+      - org.gnome.SettingsDaemon.Color
+      - Temperature:
+until:
+  signal:
+    path: /org/gnome/SettingsDaemon/Color
+    interface: org.freedesktop.DBus.Properties
+    name: PropertiesChanged
+    eavesdrop: true
+    arguments:
+      - org.gnome.SettingsDaemon.Color
+      - NightLightActive: false

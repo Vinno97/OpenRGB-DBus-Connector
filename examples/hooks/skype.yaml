@@ -16,11 +16,11 @@ trigger:
     arguments: []
   conditions:
     - service_name: org.gnome.SessionManager
-      path: ${sig_arg0}
+      path: "{{sig_arg0}}"
       method: GetAppId
       response: "/usr/share/skypeforlinux/skypeforlinux"
     - service_name: org.gnome.SessionManager
-      path: ${sig_arg0}
+      path: "{{sig_arg0}}"
       method: GetReason
       response: "Playing audio"
 until:
@@ -29,4 +29,4 @@ until:
     interface: org.gnome.SessionManager
     name: InhibitorRemoved
     arguments:
-      - ${sig_arg0}
+      - "{{sig_arg0}}"

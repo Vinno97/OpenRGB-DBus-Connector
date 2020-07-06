@@ -1,13 +1,16 @@
 import abc
 import asyncio
 import logging
-from string import Template
 from typing import Callable, List, Union
 
+from jinja2 import Template
 from pydbus.bus import Bus
 from pydbus.subscription import Subscription
 
 from .utils import Context, substitute_all
+
+# import debugpy
+
 
 TriggerCallback = Callable[[Context], None]
 
@@ -131,6 +134,7 @@ class DBusTrigger(TriggerSource):
         event_loop = asyncio.get_event_loop()
 
         def filter(conn, message, incoming):
+            # debugpy.debug_this_thread()
             try:
                 if incoming and self._should_handle(message, context):
                     new_context = self.construct_callback_context(context, message)
@@ -194,9 +198,7 @@ class DBusTrigger(TriggerSource):
             expected = sub_params[key]
             actual = message_params[key]
             if expected and expected != actual:
-                # logging.debug(
-                #     f"Ignoring message due to {key} mismatch (expected {expected}, got {actual})"
-                # )
+
                 return False
 
         if not self._validate_arguments(message, context):
@@ -210,15 +212,21 @@ class DBusTrigger(TriggerSource):
     def _validate_arguments(self, message, context) -> bool:
         actual_args = message.get_body().unpack()
         expected_args = substitute_all(self.arguments, context)
-        argument_pairs = zip(expected_args, actual_args)
-        filtered_pairs = ((e, a) for e, a in argument_pairs if e != None)
-        for expected_arg, actual in filtered_pairs:
-            if expected_arg != actual:
-                # logging.debug(
-                #     f"Ignoring message due to argument mismatch (expected {expected_args}, got {actual})"
-                # )
+
+        def compare(expected, actual):
+            if isinstance(expected, list) and isinstance(actual, (list, tuple)):
+                return all(
+                    compare(e, a)
+                    for e, a in zip(expected_args, actual_args)
+                    if e != None
+                )
+            elif isinstance(expected, dict) and isinstance(actual, dict):
+                if set(expected.keys()).issubset(actual.keys()):
+                    return all(compare(expected[key], actual[key]) for key in expected)
                 return False
-        return True
+            return expected == actual or expected is None
+
+        return compare(expected_args, actual_args)
 
 
 class SleepTrigger(TriggerSource):

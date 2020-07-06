@@ -1,7 +1,7 @@
 import logging
-from string import Template
 from typing import Callable, List, Union
 
+from jinja2 import Template
 from pydbus.bus import Bus, bus_get
 from pydbus.subscription import Subscription
 

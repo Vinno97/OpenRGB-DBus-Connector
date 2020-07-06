@@ -1,14 +1,22 @@
 import math
 import os
 import struct
-from typing import List
+from typing import List, Union
 
 import numpy as np
+from jinja2 import Template
 from openrgb import OpenRGBClient
 from openrgb.orgb import Device, Zone
 from openrgb.utils import DeviceType, RGBColor
 
-from .utils import Context, dict_merge
+from .utils import (
+    Context,
+    TemplatableList,
+    color_from_template,
+    dict_merge,
+    list_from_template,
+    list_to_template,
+)
 
 ActionCookie = int
 StackState = dict
@@ -135,7 +143,7 @@ class BaseAction:
     def reset(self, context: Context = Context()):
         pass
 
-    def construct_state(self):
+    def construct_state(self, context: Context):
         return {}
 
 
@@ -145,16 +153,16 @@ class Action(BaseAction):
         self._inner_action = wrapped_action
 
     def act(self, context: Context):
-        state = self.construct_state()
+        state = self.construct_state(context)
         return context.action_stack.push_state(state)
 
-    def construct_state(self):
-        state = self._construct_state()
-        inner_state = self._inner_action.construct_state()
+    def construct_state(self, context: Context):
+        state = self._construct_state(context)
+        inner_state = self._inner_action.construct_state(context)
 
         return dict_merge(state, inner_state)
 
-    def _construct_state(self):
+    def _construct_state(self, context: Context):
         return {}
 
     def reset(self, cookie, context: Context):
@@ -165,44 +173,40 @@ class ZoneAction(Action):
     def __init__(
         self,
         wrapped_action: Action,
-        zones: List[int],
-        leds: List[int] = None,
-        color: List[int] = None,
-        colors: List[List[int]] = None,
+        zones: TemplatableList,
+        leds: TemplatableList = None,
+        color: TemplatableList = None,
+        colors: Union[List[TemplatableList], str] = None,
         device=None,
         device_type=None,
     ):
         super().__init__(wrapped_action)
-        self.zones = zones
-        self.leds = leds
-        self.color = None
-        self.colors = None
-        if color:
-            self.color = RGBColor(*color)
-        elif colors:
-            self.colors = [RGBColor(*color) for color in colors]
-        else:
+        self.zones = list_to_template(zones) if zones else None
+        self.leds = list_to_template(leds) if leds else None
+        self.color = list_to_template(color) if color else None
+        self.colors = [list_to_template(color) for color in colors] if colors else None
+
+        if not color and not colors:
             raise Exception("Either 'color' or 'colors' should be set")
         # TODO: Add option to set modes
         # self.mode = mode
         self.device = device
 
-    def _construct_state(self, context: Context = Context()) -> StackState:
+    def _construct_state(self, context: Context) -> StackState:
 
         if self.colors:
             color_key = "colors"
-            color_val = self.colors
+            color_val = [color_from_template(c, context) for c in color]
         else:
             color_key = "color"
-            color_val = self.color
+            color_val = color_from_template(self.color, context)
 
+        zones = [int(x) for x in list_from_template(self.zones, context)]
         state = {
             "devices": [
                 {
                     "id": self.device,
-                    "zones": [
-                        {"id": zone, color_key: color_val} for zone in self.zones
-                    ],
+                    "zones": [{"id": zone, color_key: color_val} for zone in zones],
                 }
             ]
         }

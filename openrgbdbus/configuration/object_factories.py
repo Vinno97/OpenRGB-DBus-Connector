@@ -99,6 +99,19 @@ class Factory(Generic[T], metaclass=abc.ABCMeta):
         return dict_wrapper
 
     @classmethod
+    def choose(cls, *options):
+        options = [o if isinstance(o, (list, tuple)) else (o, o) for o in options]
+
+        def choose_wrapper(definition):
+            factory = next((f for t, f in options if isinstance(definition, t)), None,)
+            if factory:
+                return factory(definition)
+            else:
+                raise Exception(f"Cannot resolve factory for type {type(definition)}")
+
+        return choose_wrapper
+
+    @classmethod
     def identity(cls, definition):
         return definition
 
@@ -113,11 +126,16 @@ class ActionFactory(Factory[Action]):
         return {
             "device_id": ("device", int),
             # "leds": ("leds", Factory.list(int)),
-            "zones": ("zones", Factory.list(int)),
-            "color": ("color", Factory.list(int)),
-            "colors": ("colors", Factory.list(Factory.list(int))),
+            "zones": ("zones", cls.templated_int_list),
+            "color": ("color", cls.templated_int_list),
+            "colors": ("colors", Factory.choose((list, cls.templated_int_list), str)),
             "arguments": ("arguments", Factory.list(str)),
         }
+
+    @classmethod
+    def templated_int_list(cls, definition):
+        factory = Factory.choose((list, Factory.list(Factory.choose(str, int))), str)
+        return factory(definition)
 
     @classmethod
     def construct_instance(cls, *args, **kwargs):
