@@ -4,6 +4,7 @@ import struct
 from typing import List, Union
 
 import numpy as np
+import numpy.ma as ma
 from jinja2 import Template
 from openrgb import OpenRGBClient
 from openrgb.orgb import Device, Zone
@@ -26,6 +27,8 @@ class ActionStack:
     def __init__(self, client: OpenRGBClient):
         self.client = client
         self.states = []
+        self.devices = {}
+        self.device_cookies = {}
         self._initialize()
 
     def _initialize(self):
@@ -33,24 +36,61 @@ class ActionStack:
         for key, device in enumerate(self.client.devices):
             device_state = {"id": key, "colors": device.colors}
             base_state["devices"].append(device_state)
-
         self.states.append(base_state)
-
         # TODO: Remove this temp thing
         self.base_state = base_state
 
-    def push_state(self, state: StackState) -> ActionCookie:
-        state["cookie"] = self._get_cookie()
-        self.states.append(state)
+        for key, device in enumerate(self.client.devices):
+            self.devices[key] = np.expand_dims(
+                self._convert_orgb_state(device.colors), axis=0
+            )
+            self.device_cookies[key] = []
 
+    def _convert_orgb_state(self, orgb_colors: List[RGBColor]):
+        return ma.array([[c.red, c.green, c.blue] for c in orgb_colors]).astype("uint8")
+
+    def current_state(self):
+        states = {}
+        for key, state in self.devices.items():
+            idx = state.shape[0] - state.mask[::-1, :, 1].argmin(axis=0) - 1
+            states[key] = state[idx, np.arange(state.shape[1])]
+        return states
+
+    def push_state(self, state: StackState) -> ActionCookie:
+        cookie = self._get_cookie()
+
+        state["cookie"] = cookie
+        self.states.append(state)
         self._update_from_state(state)
+
+        # TODO: Move the creation of the numpy states to the actions.
+        for device in state["devices"]:
+            c_device = self.client.devices[device["id"]]
+            arr_state = ma.masked_all((len(c_device.colors), 3)).astype("uint8")
+            if "zones" in device:
+                for zone in device["zones"]:
+                    # c_leds = [l.id for l in c_device.zones[id_].leds]
+                    # offset = sum(len(z.leds) for z in c_device.zones[:id_])
+                    c_leds = np.array([0])
+                    offset = zone["id"]
+                    if "color" in zone:
+                        color = self._convert_orgb_state([zone["color"]] * len(c_leds))
+                    elif "colors" in zone:
+                        color = self._convert_orgb_state([zone["colors"][0]])
+                    else:
+                        raise Exception("fuck")
+                    arr_state[c_leds + offset] = color
+            self.devices[device["id"]] = ma.vstack(
+                (self.devices[device["id"]], arr_state[np.newaxis, :, :])
+            )
+            self.device_cookies[device["id"]].append(cookie)
         return state["cookie"]
 
     def remove_state(self, cookie: ActionCookie):
         state = next(
             (state for state in self.states if state["cookie"] == cookie), None
         )
-
+        self.current_state()
         if state:
             self.states.remove(state)
             # Check what devices should be updated
@@ -59,10 +99,10 @@ class ActionStack:
     def _get_cookie(self):
         """Get a cryptographically secure random cookie
         
-           32 bits should be good enough that there's no need the check for duplicate
+           64 bits should be good enough that there's no need the check for duplicate
            ids in the states. (famous last words?)
         """
-        return struct.unpack("i", os.urandom(4))
+        return struct.unpack("q", os.urandom(8))
 
     def _update_from_state(self, state):
         """Updates every device, zone or led that this state effects."""
