@@ -30,18 +30,14 @@ class Connector:
         self.loop = GLib.MainLoop()
         self.default_action = default_action
         self.context = Context(
-            {
-                # "rgb_client": client,
-                "debug": debug,
-                "action_stack": ActionStack(client),
-            }
+            {"rgb_client": client, "debug": debug, "action_stack": ActionStack(client),}
         )
         for hook in self.hooks:
             hook.set_context(self.context)
 
     def start(self):
         # Just call this once to ensure there is a default event loop.
-        asyncio.get_event_loop()
+        event_loop = asyncio.get_event_loop()
 
         if self.default_action:
             self.default_action.act(self.context)
@@ -50,7 +46,9 @@ class Connector:
         for hook in self.hooks:
             hook.attach()
 
-        asyncio.get_event_loop().run_forever()
+        # asyncio.run(self.context.action_stack.start_animation_loop(30))
+        task = event_loop.create_task(self.context.action_stack.start_animation_loop())
+        event_loop.run_forever()
 
         print("%d hooks attached" % len(self.hooks))
 

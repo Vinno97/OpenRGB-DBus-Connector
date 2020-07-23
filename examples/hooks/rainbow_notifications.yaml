@@ -1,0 +1,16 @@
+# This hook makes the rainbow shine, each time a notification is shown
+
+bus: session
+actions:
+  - device_id: 0
+    zones: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    color: [255, 255, 0]
+trigger:
+  signal:
+    path: /org/freedesktop/Notifications
+    interface: org.freedesktop.Notifications
+    name: Notify
+    eavesdrop: true
+until:
+  sleep:
+    duration: 1s

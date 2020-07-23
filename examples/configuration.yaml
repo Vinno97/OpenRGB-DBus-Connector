@@ -11,9 +11,10 @@ server:
   port: 6742
 
 hooks:
-  skype: !include hooks/skype.yaml
-  whatsapp: !include hooks/whatsapp.yaml
-  night_light: !include hooks/night_light.yaml
-  geary_mail: !include hooks/geary.yaml
+  # skype: !include hooks/skype.yaml
+  # whatsapp: !include hooks/whatsapp.yaml
+  # night_light: !include hooks/smooth_night_light.yaml
+  # geary_mail: !include hooks/geary.yaml
+  rainbow_notifications: !include hooks/rainbow_notifications.yaml
   # Disabled as it interferes any other notification based hook.
   # general_notifications: !include hooks/notifications.yaml

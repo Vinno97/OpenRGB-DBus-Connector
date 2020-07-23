@@ -9,7 +9,7 @@ from openrgb import OpenRGBClient
 import openrgbdbus.connector
 import openrgbdbus.defaults as defaults
 
-from ..actions import Action, BaseAction, ZoneAction
+from ..actions import Action, AnimatableAction, BaseAction, ZoneAction
 from ..hook import Hook
 from ..trigger import DBusTrigger, SleepTrigger, Trigger, TriggerCondition
 
@@ -140,7 +140,7 @@ class ActionFactory(Factory[Action]):
     @classmethod
     def construct_instance(cls, *args, **kwargs):
         # TODO: Don't hardcode the ZoneAction here
-        return ZoneAction(*args, **kwargs)
+        return AnimatableAction(*args, **kwargs)
 
 
 class DBusTriggerFactory(Factory[DBusTrigger]):
